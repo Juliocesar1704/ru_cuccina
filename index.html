@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>RU CUCCINA | Massas & Risotos</title>
+  <meta name="description" content="Cardápio digital RU CUCCINA - Massas artesanais e risotos cremosos preparados com excelência.">
+  
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,600&family=Montserrat:wght@300;400;500;600;700&family=Playfair+Display:wght@500;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="app-wrapper">
+    <main class="mobile-container">
+      
+      <!-- Top Header Section -->
+      <header class="header-section">
+        <div class="header-background-pattern"></div>
+        <div class="header-content">
+          
+          <!-- Top Bar: Shopping Bag Icon -->
+          <div class="top-nav">
+            <div class="top-nav-spacer"></div>
+            <button class="cart-btn" id="cartOpenBtn" aria-label="Abrir Carrinho de Compras">
+              <svg class="bag-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+                <line x1="3" y1="6" x2="21" y2="6"></line>
+                <path d="M16 10a4 4 0 0 1-8 0"></path>
+              </svg>
+              <span class="cart-badge" id="cartBadge">0</span>
+            </button>
+          </div>
+
+          <!-- Brand Logo & Titles -->
+          <div class="brand-area">
+            <img src="logo_transparent.png" alt="RU CUCCINA - Massas & Risotos" class="header-brand-logo">
+          </div>
+
+          <!-- Search Bar -->
+          <div class="search-container">
+            <div class="search-box">
+              <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              <input type="text" id="searchInput" placeholder="Buscar massas, risotos e mais..." autocomplete="off">
+              <button class="clear-search-btn" id="clearSearchBtn" aria-label="Limpar busca" style="display: none;">&times;</button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <!-- Main Menu Section -->
+      <section class="menu-section">
+        
+        <!-- Category Tabs -->
+        <nav class="categories-nav" aria-label="Categorias do cardápio">
+          <div class="categories-scroll" id="categoriesContainer">
+            <button class="cat-pill active" data-category="all">
+              <svg class="cat-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round">
+                <!-- Large star -->
+                <path d="M9 3L10.8 7.2L15 9L10.8 10.8L9 15L7.2 10.8L3 9L7.2 7.2L9 3Z"/>
+                <!-- Small star top right -->
+                <path d="M17 12L18.2 14.8L21 16L18.2 17.2L17 20L15.8 17.2L13 16L15.8 14.8L17 12Z" stroke-width="1.6"/>
+              </svg>
+              <span class="cat-label">Todos os Itens</span>
+            </button>
+            <button class="cat-pill" data-category="massas">
+              <svg class="cat-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <!-- Bowl -->
+                <path d="M4 14C4 18 7.5 20 12 20C16.5 20 20 18 20 14H4Z"/>
+                <!-- Noodles mound -->
+                <path d="M5 14C5 9.5 8 7 12 7C16 7 19 9.5 19 14"/>
+                <!-- Swirls / toppings -->
+                <path d="M9 10C10 8.5 11 8.5 12 10C13 11.5 14 11.5 15 10"/>
+                <path d="M10 13.5C11 12.5 13 12.5 14 13.5"/>
+              </svg>
+              <span class="cat-label">Massas</span>
+            </button>
+            <button class="cat-pill" data-category="risotos">
+              <svg class="cat-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <!-- Risotto bowl with rim -->
+                <path d="M3 14H21L18.5 20H5.5L3 14Z"/>
+                <path d="M2 14H22"/>
+                <!-- Rising steam lines -->
+                <path d="M9 5C8.5 6.5 9.5 8 9 9.5"/>
+                <path d="M12 4C11.5 6 12.5 7.5 12 9.5"/>
+                <path d="M15 5C14.5 6.5 15.5 8 15 9.5"/>
+              </svg>
+              <span class="cat-label">Risotos</span>
+            </button>
+            <button class="cat-pill" data-category="combos">
+              <svg class="cat-icon-svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <!-- Cloche platter base -->
+                <path d="M2 19H22"/>
+                <!-- Dome -->
+                <path d="M4 19C4 13 7.5 9 12 9C16.5 9 20 13 20 19"/>
+                <!-- Handle / knob -->
+                <path d="M12 9V6"/>
+                <circle cx="12" cy="5" r="1.5"/>
+              </svg>
+              <span class="cat-label">Combos</span>
+            </button>
+          </div>
+        </nav>
+
+        <!-- Product Feed Container -->
+        <div class="products-list" id="productsList">
+          <!-- Dynamically populated by JS or fallback HTML -->
+        </div>
+
+        <!-- Empty State (When search/filter has no results) -->
+        <div class="empty-state" id="emptyState" style="display: none;">
+          <span class="empty-icon">🔍</span>
+          <p class="empty-text">Nenhum item encontrado.</p>
+          <button class="empty-reset-btn" id="resetFiltersBtn">Ver todos os itens</button>
+        </div>
+
+      </section>
+
+      <!-- Footer Branding -->
+      <footer class="app-footer">
+        <p class="footer-copy">RU CUCCINA • MASSAS &amp; RISOTOS</p>
+      </footer>
+
+    </main>
+
+    <!-- Shopping Cart Drawer / Modal -->
+    <div class="cart-overlay" id="cartOverlay"></div>
+    <aside class="cart-drawer" id="cartDrawer" aria-label="Carrinho de Compras">
+      <div class="cart-header">
+        <div class="cart-header-title">
+          <svg class="cart-title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <path d="M16 10a4 4 0 0 1-8 0"></path>
+          </svg>
+          <h2>Sua Sacola</h2>
+        </div>
+        <button class="cart-close-btn" id="cartCloseBtn" aria-label="Fechar Sacola">&times;</button>
+      </div>
+
+      <div class="cart-body" id="cartItemsContainer">
+        <!-- Injected by JS -->
+      </div>
+
+      <div class="cart-footer" id="cartFooter">
+        <div class="cart-subtotal-row">
+          <span class="subtotal-label">Subtotal</span>
+          <span class="subtotal-amount" id="cartSubtotal">R$ 0,00</span>
+        </div>
+        <div class="cart-actions">
+          <button class="checkout-btn" id="checkoutBtn">
+            <span>Finalizar Pedido</span>
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+              <polyline points="12 5 19 12 12 19"></polyline>
+            </svg>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Toast Notification -->
+    <div class="toast" id="toastNotification">
+      <div class="toast-content">
+        <span class="toast-check">✓</span>
+        <span class="toast-text" id="toastMessage">Item adicionado à sacola!</span>
+      </div>
+    </div>
+
+  </div>
+
+  <script src="app.js"></script>
+</body>
+</html>
