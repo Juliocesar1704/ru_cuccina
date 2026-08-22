@@ -1,5 +1,5 @@
 /**
- * RU CUCCINA - Sistema de Delivery & Gestão de Pedidos
+ * RU CUCCINA - Sistema Completo de Delivery, Autenticação e Gestão de Pedidos
  */
 
 // Cardápio de Produtos
@@ -54,7 +54,7 @@ const PRODUCTS = [
   }
 ];
 
-// Dados Iniciais de Demonstração para a Proprietária (se estiver vazio)
+// Pedidos Iniciais de Demonstração para a Proprietária
 const INITIAL_DEMO_ORDERS = [
   {
     id: '1001',
@@ -62,7 +62,8 @@ const INITIAL_DEMO_ORDERS = [
     timeFormatted: 'Há 15 min',
     customer: {
       name: 'Camila Ferreira',
-      phone: '11987654321',
+      cpf: '123.456.789-00',
+      phone: '(11) 98765-4321',
       street: 'Rua das Palmeiras, 142',
       neighborhood: 'Jardins',
       complement: 'Apto 51'
@@ -86,7 +87,8 @@ const INITIAL_DEMO_ORDERS = [
     timeFormatted: 'Há 35 min',
     customer: {
       name: 'Rodrigo Santos',
-      phone: '11991234567',
+      cpf: '987.654.321-11',
+      phone: '(11) 99123-4567',
       street: 'Av. Paulista, 1578',
       neighborhood: 'Bela Vista',
       complement: 'Bloco B'
@@ -102,25 +104,24 @@ const INITIAL_DEMO_ORDERS = [
     ],
     total: 53.80,
     isPaid: true,
-    isDispatched: true, // 🔴 Este está em VERMELHO pois já saiu para entrega!
+    isDispatched: true, // 🔴 Em VERMELHO pois já saiu para entrega!
     isCompleted: false
   }
 ];
 
-// Estado da Aplicação
+// Estado Global
 let currentCategory = 'all';
 let searchQuery = '';
 let cart = [];
 let orders = [];
+let registeredUsers = [];
+let currentUser = null; // { role: 'admin' | 'customer', name, cpf, phone, street, neighborhood, complement }
 let currentAdminFilter = 'all';
 let lastCreatedOrder = null;
 
-// Elementos DOM - Abas do Sistema
-const tabMenuBtn = document.getElementById('tabMenuBtn');
-const tabAdminBtn = document.getElementById('tabAdminBtn');
-const clientMenuView = document.getElementById('clientMenuView');
-const adminOrdersView = document.getElementById('adminOrdersView');
-const adminPendingCounter = document.getElementById('adminPendingCounter');
+// Elementos DOM - Telas
+const clientStoreView = document.getElementById('clientStoreView');
+const adminDashboardView = document.getElementById('adminDashboardView');
 
 // Elementos DOM - Cardápio
 const productsListEl = document.getElementById('productsList');
@@ -140,92 +141,462 @@ const cartItemsContainer = document.getElementById('cartItemsContainer');
 const cartSubtotalEl = document.getElementById('cartSubtotal');
 const checkoutBtn = document.getElementById('checkoutBtn');
 
+// Elementos DOM - Autenticação
+const authModalOverlay = document.getElementById('authModalOverlay');
+const authModalOpenBtn = document.getElementById('authModalOpenBtn');
+const authCloseBtn = document.getElementById('authCloseBtn');
+const navAuthLabel = document.getElementById('navAuthLabel');
+const authTabLogin = document.getElementById('authTabLogin');
+const authTabRegister = document.getElementById('authTabRegister');
+const loginForm = document.getElementById('loginForm');
+const registerForm = document.getElementById('registerForm');
+const adminFooterLoginBtn = document.getElementById('adminFooterLoginBtn');
+
 // Elementos DOM - Checkout & Sucesso
 const checkoutModalOverlay = document.getElementById('checkoutModalOverlay');
-const checkoutModal = document.getElementById('checkoutModal');
 const checkoutCloseBtn = document.getElementById('checkoutCloseBtn');
 const deliveryForm = document.getElementById('deliveryForm');
 const paymentMethodSelect = document.getElementById('paymentMethod');
 const changeGroup = document.getElementById('changeGroup');
 const modalTotalAmount = document.getElementById('modalTotalAmount');
-
 const successModalOverlay = document.getElementById('successModalOverlay');
 const successOrderDetails = document.getElementById('successOrderDetails');
 const sendWhatsAppBtn = document.getElementById('sendWhatsAppBtn');
 const successBackBtn = document.getElementById('successBackBtn');
 
-// Elementos DOM - Painel da Administradora
+// Elementos DOM - Painel Admin
 const adminOrdersList = document.getElementById('adminOrdersList');
 const adminEmptyOrders = document.getElementById('adminEmptyOrders');
-const refreshOrdersBtn = document.getElementById('refreshOrdersBtn');
+const adminRefreshBtn = document.getElementById('adminRefreshBtn');
+const adminLogoutBtn = document.getElementById('adminLogoutBtn');
+const adminBackToMenuBtn = document.getElementById('adminBackToMenuBtn');
 const metricTotalOrders = document.getElementById('metricTotalOrders');
 const metricPendingOrders = document.getElementById('metricPendingOrders');
 const metricPaidOrders = document.getElementById('metricPaidOrders');
 const metricDispatchedOrders = document.getElementById('metricDispatchedOrders');
 
-// Toast Notification
+// Elementos DOM - Toast
 const toastNotification = document.getElementById('toastNotification');
 const toastMessage = document.getElementById('toastMessage');
 
-// Formatação Monetária BRL
+// Formatação BRL
 function formatCurrency(value) {
   return (value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
+// Máscaras de CPF e Telefone
+function maskCPF(value) {
+  return value
+    .replace(/\D/g, '')
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d)/, '$1.$2')
+    .replace(/(\d{3})(\d{1,2})/, '$1-$2')
+    .replace(/(-\d{2})\d+?$/, '$1');
+}
+
+function maskPhone(value) {
+  return value
+    .replace(/\D/g, '')
+    .replace(/(\d{2})(\d)/, '($1) $2')
+    .replace(/(\d{5})(\d)/, '$1-$2')
+    .replace(/(-\d{4})\d+?$/, '$1');
+}
+
+// Aplicar máscaras nos inputs
+['regCpf', 'custCpf'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('input', (e) => e.target.value = maskCPF(e.target.value));
+});
+
+['regPhone', 'custPhone'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('input', (e) => e.target.value = maskPhone(e.target.value));
+});
+
 /* ==========================================================================
-   CARREGAMENTO E PERSISTÊNCIA DE PEDIDOS
+   PERSISTÊNCIA & CARREGAMENTO (LocalStorage)
    ========================================================================== */
-function loadOrders() {
-  const saved = localStorage.getItem('ru_cuccina_orders');
-  if (saved) {
-    try {
-      orders = JSON.parse(saved);
-    } catch (e) {
-      orders = INITIAL_DEMO_ORDERS;
-    }
+function loadData() {
+  // Pedidos
+  const savedOrders = localStorage.getItem('ru_cuccina_orders');
+  if (savedOrders) {
+    try { orders = JSON.parse(savedOrders); } catch (e) { orders = INITIAL_DEMO_ORDERS; }
   } else {
     orders = INITIAL_DEMO_ORDERS;
     saveOrders();
+  }
+
+  // Usuários Cadastrados
+  const savedUsers = localStorage.getItem('ru_cuccina_users');
+  if (savedUsers) {
+    try { registeredUsers = JSON.parse(savedUsers); } catch (e) { registeredUsers = []; }
+  }
+
+  // Sessão do Usuário
+  const savedSession = localStorage.getItem('ru_cuccina_session');
+  if (savedSession) {
+    try {
+      currentUser = JSON.parse(savedSession);
+      updateAuthUI();
+    } catch (e) {
+      currentUser = null;
+    }
   }
 }
 
 function saveOrders() {
   localStorage.setItem('ru_cuccina_orders', JSON.stringify(orders));
-  updateAdminCounters();
+  updateAdminMetrics();
   renderAdminOrders();
 }
 
-// Sincronização em tempo real entre abas
+function saveUsers() {
+  localStorage.setItem('ru_cuccina_users', JSON.stringify(registeredUsers));
+}
+
+function saveSession(user) {
+  currentUser = user;
+  if (user) {
+    localStorage.setItem('ru_cuccina_session', JSON.stringify(user));
+  } else {
+    localStorage.removeItem('ru_cuccina_session');
+  }
+  updateAuthUI();
+}
+
+// Sincronização entre abas
 window.addEventListener('storage', (e) => {
   if (e.key === 'ru_cuccina_orders') {
-    loadOrders();
-    updateAdminCounters();
+    loadData();
+    updateAdminMetrics();
     renderAdminOrders();
   }
 });
 
 /* ==========================================================================
-   SISTEMA DE ALTERNÂNCIA DE VISÃO (Cardápio / Painel da Gerente)
+   AUTENTICAÇÃO: LOGIN & CADASTRO
    ========================================================================== */
-function switchView(viewName) {
-  if (viewName === 'menu') {
-    tabMenuBtn.classList.add('active');
-    tabAdminBtn.classList.remove('active');
-    clientMenuView.style.display = 'flex';
-    adminOrdersView.style.display = 'none';
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-  } else if (viewName === 'admin') {
-    tabAdminBtn.classList.add('active');
-    tabMenuBtn.classList.remove('active');
-    clientMenuView.style.display = 'none';
-    adminOrdersView.style.display = 'flex';
-    renderAdminOrders();
-    window.scrollTo({ top: 0, behavior: 'smooth' });
+function updateAuthUI() {
+  if (currentUser) {
+    if (currentUser.role === 'admin') {
+      navAuthLabel.textContent = '👑 Gerência';
+    } else {
+      const firstName = currentUser.name.split(' ')[0];
+      navAuthLabel.textContent = `Olá, ${firstName}`;
+    }
+  } else {
+    navAuthLabel.textContent = 'Entrar';
   }
 }
 
-tabMenuBtn.addEventListener('click', () => switchView('menu'));
-tabAdminBtn.addEventListener('click', () => switchView('admin'));
+// Abrir Modal de Login/Cadastro
+authModalOpenBtn.addEventListener('click', () => {
+  if (currentUser && currentUser.role === 'admin') {
+    openAdminDashboard();
+  } else if (currentUser) {
+    if (confirm(`Conectado como: ${currentUser.name}\n\nDeseja sair da sua conta?`)) {
+      saveSession(null);
+      showToast('Você saiu da sua conta.');
+    }
+  } else {
+    authModalOverlay.classList.add('open');
+  }
+});
+
+adminFooterLoginBtn.addEventListener('click', () => {
+  if (currentUser && currentUser.role === 'admin') {
+    openAdminDashboard();
+  } else {
+    authTabLogin.click();
+    document.getElementById('loginIdentifier').value = 'admin';
+    document.getElementById('loginPassword').value = 'admin123';
+    authModalOverlay.classList.add('open');
+  }
+});
+
+authCloseBtn.addEventListener('click', () => {
+  authModalOverlay.classList.remove('open');
+});
+
+// Alternar abas do modal
+authTabLogin.addEventListener('click', () => {
+  authTabLogin.classList.add('active');
+  authTabRegister.classList.remove('active');
+  loginForm.style.display = 'flex';
+  registerForm.style.display = 'none';
+});
+
+authTabRegister.addEventListener('click', () => {
+  authTabRegister.classList.add('active');
+  authTabLogin.classList.remove('active');
+  registerForm.style.display = 'flex';
+  loginForm.style.display = 'none';
+});
+
+// Submeter Login
+loginForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const ident = document.getElementById('loginIdentifier').value.trim().toLowerCase();
+  const pass = document.getElementById('loginPassword').value.trim();
+
+  // 1. Verificação de Acesso Admin
+  if ((ident === 'admin' || ident === 'admin@rucuccina.com') && pass === 'admin123') {
+    saveSession({ role: 'admin', name: 'Administrador' });
+    authModalOverlay.classList.remove('open');
+    loginForm.reset();
+    showToast('Acesso concedido ao Painel de Gestão!');
+    openAdminDashboard();
+    return;
+  }
+
+  // 2. Verificação de Cliente Cadastrado
+  const user = registeredUsers.find(u => 
+    (u.cpf === ident || u.phone === ident || (u.email && u.email.toLowerCase() === ident)) && u.password === pass
+  );
+
+  if (user) {
+    saveSession({ ...user, role: 'customer' });
+    authModalOverlay.classList.remove('open');
+    loginForm.reset();
+    showToast(`Bem-vindo(a) de volta, ${user.name.split(' ')[0]}!`);
+  } else {
+    alert('Credenciais incorretas.\n\nPara acesso Admin: use admin / admin123\nPara cliente: cadastre-se na aba "Criar Conta".');
+  }
+});
+
+// Submeter Cadastro de Cliente
+registerForm.addEventListener('submit', (e) => {
+  e.preventDefault();
+  const name = document.getElementById('regName').value.trim();
+  const cpf = document.getElementById('regCpf').value.trim();
+  const phone = document.getElementById('regPhone').value.trim();
+  const street = document.getElementById('regStreet').value.trim();
+  const neighborhood = document.getElementById('regNeighborhood').value.trim();
+  const complement = document.getElementById('regComplement').value.trim();
+  const password = document.getElementById('regPassword').value.trim();
+
+  if (registeredUsers.some(u => u.cpf === cpf)) {
+    alert('Este CPF já está cadastrado. Faça login na aba "Entrar".');
+    return;
+  }
+
+  const newUser = {
+    id: 'user_' + Date.now(),
+    name,
+    cpf,
+    phone,
+    street,
+    neighborhood,
+    complement,
+    password
+  };
+
+  registeredUsers.push(newUser);
+  saveUsers();
+  saveSession({ ...newUser, role: 'customer' });
+
+  authModalOverlay.classList.remove('open');
+  registerForm.reset();
+  showToast(`Cadastro realizado com sucesso! Olá, ${name.split(' ')[0]}.`);
+});
+
+/* ==========================================================================
+   PAINEL DE GESTÃO DA PROPRIETÁRIA (Admin)
+   ========================================================================== */
+function openAdminDashboard() {
+  clientStoreView.style.display = 'none';
+  adminDashboardView.style.display = 'flex';
+  renderAdminOrders();
+  updateAdminMetrics();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function closeAdminDashboard() {
+  adminDashboardView.style.display = 'none';
+  clientStoreView.style.display = 'flex';
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+adminBackToMenuBtn.addEventListener('click', closeAdminDashboard);
+
+adminLogoutBtn.addEventListener('click', () => {
+  saveSession(null);
+  closeAdminDashboard();
+  showToast('Você saiu do painel administrativo.');
+});
+
+adminRefreshBtn.addEventListener('click', () => {
+  loadData();
+  renderAdminOrders();
+  updateAdminMetrics();
+  showToast('Pedidos atualizados!');
+});
+
+function updateAdminMetrics() {
+  const total = orders.length;
+  const pending = orders.filter(o => !o.isCompleted && !o.isDispatched).length;
+  const paid = orders.filter(o => o.isPaid && !o.isCompleted).length;
+  const dispatched = orders.filter(o => o.isDispatched && !o.isCompleted).length;
+
+  metricTotalOrders.textContent = total;
+  metricPendingOrders.textContent = pending;
+  metricPaidOrders.textContent = paid;
+  metricDispatchedOrders.textContent = dispatched;
+}
+
+// Filtros do Painel
+document.querySelectorAll('.admin-filter-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.admin-filter-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    currentAdminFilter = btn.dataset.statusFilter;
+    renderAdminOrders();
+  });
+});
+
+function renderAdminOrders() {
+  let filtered = [...orders];
+
+  if (currentAdminFilter === 'pending') {
+    filtered = filtered.filter(o => !o.isCompleted && !o.isDispatched);
+  } else if (currentAdminFilter === 'paid') {
+    filtered = filtered.filter(o => o.isPaid && !o.isCompleted);
+  } else if (currentAdminFilter === 'dispatched') {
+    filtered = filtered.filter(o => o.isDispatched && !o.isCompleted);
+  } else if (currentAdminFilter === 'completed') {
+    filtered = filtered.filter(o => o.isCompleted);
+  }
+
+  if (filtered.length === 0) {
+    adminOrdersList.innerHTML = '';
+    adminEmptyOrders.style.display = 'block';
+    return;
+  }
+
+  adminEmptyOrders.style.display = 'none';
+  adminOrdersList.innerHTML = filtered.map(order => {
+    const isDispatched = order.isDispatched && !order.isCompleted;
+    const isPaid = order.isPaid;
+    
+    return `
+      <div class="order-card ${isDispatched ? 'status-dispatched' : ''}" data-id="${order.id}">
+        
+        <!-- Top Row do Pedido -->
+        <div class="order-card-top">
+          <div class="order-id-wrap">
+            <span class="order-num">#${order.id}</span>
+            <span class="order-time">${order.timeFormatted || 'Hoje'}</span>
+          </div>
+          
+          <div class="order-badges-wrap">
+            ${isPaid 
+              ? `<span class="badge-paid">🟢 Pago</span>` 
+              : `<span class="badge-unpaid">🟡 Pag. Pendente</span>`}
+            
+            <!-- 🔴 DESTAQUE EM VERMELHO PARA PEDIDOS QUE SAÍRAM PARA ENTREGA -->
+            ${isDispatched 
+              ? `<span class="badge-dispatched-red">🛵 SAIU P/ ENTREGA</span>` 
+              : ''}
+
+            ${order.isCompleted 
+              ? `<span class="badge-completed">✓ Entregue</span>` 
+              : ''}
+          </div>
+        </div>
+
+        <!-- Dados do Cliente e Endereço -->
+        <div class="order-customer-info">
+          <div class="order-cust-name">
+            👤 <strong>${order.customer.name}</strong> ${order.customer.cpf ? `<small style="font-weight:400;color:#666;">(CPF: ${order.customer.cpf})</small>` : ''}
+          </div>
+          <div>
+            <a href="https://wa.me/55${order.customer.phone.replace(/\D/g, '')}" target="_blank" class="order-cust-phone">
+              📱 WhatsApp: ${order.customer.phone}
+            </a>
+          </div>
+          <div class="order-address-box">
+            📍 <strong>Endereço:</strong> ${order.customer.street}, ${order.customer.neighborhood} 
+            ${order.customer.complement ? ' - ' + order.customer.complement : ''}
+          </div>
+          ${order.notes ? `<div style="font-size: 11.5px; color: #b45309; margin-top: 2px;">📝 Obs: ${order.notes}</div>` : ''}
+        </div>
+
+        <!-- Itens do Pedido -->
+        <div class="order-items-list">
+          ${order.items.map(item => `
+            <div class="order-item-row">
+              <span><strong>${item.qty}x</strong> ${item.title}</span>
+              <span>${formatCurrency(item.price * item.qty)}</span>
+            </div>
+          `).join('')}
+        </div>
+
+        <!-- Total e Forma de Pagamento -->
+        <div class="order-total-row">
+          <span>Forma: <strong>${order.payment.method}</strong></span>
+          <span>Total: <strong>${formatCurrency(order.total)}</strong></span>
+        </div>
+
+        <!-- Controles de Ação da Gerente -->
+        <div class="order-actions-bar">
+          <!-- Marcar / Desmarcar como Pago -->
+          <button class="order-action-btn btn-toggle-paid ${isPaid ? 'is-paid' : ''}" onclick="togglePaidStatus('${order.id}')">
+            ${isPaid ? '✓ Pago 🟢' : 'Marcar como Pago'}
+          </button>
+
+          <!-- Marcar / Desmarcar como Saiu para Entrega (FICA EM VERMELHO) -->
+          <button class="order-action-btn btn-toggle-dispatch ${isDispatched ? 'is-dispatched' : ''}" onclick="toggleDispatchStatus('${order.id}')">
+            ${isDispatched ? '🛵 Em Rota 🔴' : '🛵 Saiu p/ Entrega'}
+          </button>
+        </div>
+
+        <div class="order-footer-actions">
+          <button class="btn-complete-order" onclick="toggleCompleteStatus('${order.id}')">
+            ${order.isCompleted ? 'Reabrir Pedido' : '✓ Marcar como Entregue'}
+          </button>
+          <button class="btn-delete-order" onclick="deleteOrder('${order.id}')">
+            Excluir
+          </button>
+        </div>
+
+      </div>
+    `;
+  }).join('');
+}
+
+function togglePaidStatus(orderId) {
+  const order = orders.find(o => o.id === orderId);
+  if (!order) return;
+  order.isPaid = !order.isPaid;
+  saveOrders();
+  showToast(`Pedido #${order.id}: ${order.isPaid ? 'Marcado como Pago 🟢' : 'Marcado como Pagamento Pendente'}`);
+}
+
+function toggleDispatchStatus(orderId) {
+  const order = orders.find(o => o.id === orderId);
+  if (!order) return;
+  order.isDispatched = !order.isDispatched;
+  if (order.isDispatched) order.isCompleted = false;
+  saveOrders();
+  showToast(`Pedido #${order.id}: ${order.isDispatched ? 'Saiu para Entrega! 🔴' : 'Retornado para preparo'}`);
+}
+
+function toggleCompleteStatus(orderId) {
+  const order = orders.find(o => o.id === orderId);
+  if (!order) return;
+  order.isCompleted = !order.isCompleted;
+  if (order.isCompleted) order.isDispatched = false;
+  saveOrders();
+  showToast(`Pedido #${order.id}: ${order.isCompleted ? 'Concluído com sucesso! ✓' : 'Reaberto'}`);
+}
+
+function deleteOrder(orderId) {
+  if (confirm(`Tem certeza que deseja excluir o Pedido #${orderId}?`)) {
+    orders = orders.filter(o => o.id !== orderId);
+    saveOrders();
+    showToast(`Pedido #${orderId} excluído.`);
+  }
+}
 
 /* ==========================================================================
    CARDÁPIO (Renderização, Filtros e Busca)
@@ -387,7 +758,7 @@ cartCloseBtn.addEventListener('click', closeCart);
 cartOverlay.addEventListener('click', closeCart);
 
 /* ==========================================================================
-   CHECKOUT & FINALIZAÇÃO DO PEDIDO DE DELIVERY
+   CHECKOUT DO CLIENTE
    ========================================================================== */
 checkoutBtn.addEventListener('click', () => {
   if (cart.length === 0) {
@@ -397,6 +768,16 @@ checkoutBtn.addEventListener('click', () => {
 
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
   modalTotalAmount.textContent = formatCurrency(subtotal);
+
+  // Auto-preenchimento caso o cliente esteja logado
+  if (currentUser && currentUser.role === 'customer') {
+    document.getElementById('custName').value = currentUser.name || '';
+    document.getElementById('custCpf').value = currentUser.cpf || '';
+    document.getElementById('custPhone').value = currentUser.phone || '';
+    document.getElementById('custStreet').value = currentUser.street || '';
+    document.getElementById('custNeighborhood').value = currentUser.neighborhood || '';
+    document.getElementById('custComplement').value = currentUser.complement || '';
+  }
 
   closeCart();
   checkoutModalOverlay.classList.add('open');
@@ -414,6 +795,7 @@ deliveryForm.addEventListener('submit', (e) => {
   e.preventDefault();
 
   const name = document.getElementById('custName').value.trim();
+  const cpf = document.getElementById('custCpf').value.trim();
   const phone = document.getElementById('custPhone').value.trim();
   const street = document.getElementById('custStreet').value.trim();
   const neighborhood = document.getElementById('custNeighborhood').value.trim();
@@ -431,6 +813,7 @@ deliveryForm.addEventListener('submit', (e) => {
     timeFormatted: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
     customer: {
       name,
+      cpf,
       phone,
       street,
       neighborhood,
@@ -443,22 +826,19 @@ deliveryForm.addEventListener('submit', (e) => {
     notes,
     items: [...cart],
     total: subtotal,
-    isPaid: false,          // Inicialmente não pago (o gestor pode marcar)
-    isDispatched: false,    // Inicialmente não saiu para entrega
+    isPaid: false,
+    isDispatched: false,
     isCompleted: false
   };
 
-  // Adiciona ao topo dos pedidos
   orders.unshift(newOrder);
   saveOrders();
   lastCreatedOrder = newOrder;
 
-  // Limpa formulário e carrinho
   deliveryForm.reset();
   cart = [];
   updateCartUI();
 
-  // Fecha modal de checkout e abre modal de sucesso
   checkoutModalOverlay.classList.remove('open');
   showSuccessModal(newOrder);
 });
@@ -466,7 +846,8 @@ deliveryForm.addEventListener('submit', (e) => {
 function showSuccessModal(order) {
   successOrderDetails.innerHTML = `
     <div style="margin-bottom: 8px;"><strong>Pedido #${order.id}</strong> • ${order.timeFormatted}</div>
-    <div style="margin-bottom: 6px;">👤 <strong>${order.customer.name}</strong> (${order.customer.phone})</div>
+    <div style="margin-bottom: 6px;">👤 <strong>${order.customer.name}</strong> ${order.customer.cpf ? `<br><small style="color:#666;">CPF: ${order.customer.cpf}</small>` : ''}</div>
+    <div style="margin-bottom: 6px;">📱 ${order.customer.phone}</div>
     <div style="margin-bottom: 6px;">📍 ${order.customer.street}, ${order.customer.neighborhood} ${order.customer.complement ? '- ' + order.customer.complement : ''}</div>
     <div style="margin-bottom: 8px;">💳 Pagamento: <strong>${order.payment.method}</strong> ${order.payment.change ? '(' + order.payment.change + ')' : ''}</div>
     <hr style="border: 0; border-top: 1px dashed #ded8cb; margin: 8px 0;">
@@ -484,6 +865,9 @@ sendWhatsAppBtn.addEventListener('click', () => {
   
   let msg = `*RU CUCCINA - Novo Pedido #${lastCreatedOrder.id}*%0A%0A`;
   msg += `👤 *Cliente:* ${lastCreatedOrder.customer.name}%0A`;
+  if (lastCreatedOrder.customer.cpf) {
+    msg += `📄 *CPF:* ${lastCreatedOrder.customer.cpf}%0A`;
+  }
   msg += `📞 *WhatsApp:* ${lastCreatedOrder.customer.phone}%0A`;
   msg += `📍 *Endereço:* ${lastCreatedOrder.customer.street}, ${lastCreatedOrder.customer.neighborhood} ${lastCreatedOrder.customer.complement ? '- ' + lastCreatedOrder.customer.complement : ''}%0A%0A`;
   msg += `🍝 *Itens do Pedido:*%0A`;
@@ -504,200 +888,7 @@ successBackBtn.addEventListener('click', () => {
 });
 
 /* ==========================================================================
-   PAINEL DE GESTÃO DA PROPRIETÁRIA (Métricas, Filtros e Ações de Status)
-   ========================================================================== */
-function updateAdminCounters() {
-  const total = orders.length;
-  const pending = orders.filter(o => !o.isCompleted && !o.isDispatched).length;
-  const paid = orders.filter(o => o.isPaid && !o.isCompleted).length;
-  const dispatched = orders.filter(o => o.isDispatched && !o.isCompleted).length;
-
-  metricTotalOrders.textContent = total;
-  metricPendingOrders.textContent = pending;
-  metricPaidOrders.textContent = paid;
-  metricDispatchedOrders.textContent = dispatched;
-
-  if (pending > 0) {
-    adminPendingCounter.textContent = pending;
-    adminPendingCounter.style.display = 'inline-block';
-  } else {
-    adminPendingCounter.style.display = 'none';
-  }
-}
-
-// Filtros do Painel
-document.querySelectorAll('.admin-filter-btn').forEach(btn => {
-  btn.addEventListener('click', (e) => {
-    document.querySelectorAll('.admin-filter-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    currentAdminFilter = btn.dataset.statusFilter;
-    renderAdminOrders();
-  });
-});
-
-refreshOrdersBtn.addEventListener('click', () => {
-  loadOrders();
-  renderAdminOrders();
-  showToast('Painel de pedidos atualizado!');
-});
-
-function renderAdminOrders() {
-  let filtered = [...orders];
-
-  if (currentAdminFilter === 'pending') {
-    filtered = filtered.filter(o => !o.isCompleted && !o.isDispatched);
-  } else if (currentAdminFilter === 'paid') {
-    filtered = filtered.filter(o => o.isPaid && !o.isCompleted);
-  } else if (currentAdminFilter === 'dispatched') {
-    // 🔴 Filtra os que saíram para entrega
-    filtered = filtered.filter(o => o.isDispatched && !o.isCompleted);
-  } else if (currentAdminFilter === 'completed') {
-    filtered = filtered.filter(o => o.isCompleted);
-  }
-
-  if (filtered.length === 0) {
-    adminOrdersList.innerHTML = '';
-    adminEmptyOrders.style.display = 'block';
-    return;
-  }
-
-  adminEmptyOrders.style.display = 'none';
-  adminOrdersList.innerHTML = filtered.map(order => {
-    const isDispatched = order.isDispatched && !order.isCompleted;
-    const isPaid = order.isPaid;
-    
-    return `
-      <div class="order-card ${isDispatched ? 'status-dispatched' : ''}" data-id="${order.id}">
-        
-        <!-- Header do Card de Pedido -->
-        <div class="order-card-top">
-          <div class="order-id-wrap">
-            <span class="order-num">#${order.id}</span>
-            <span class="order-time">${order.timeFormatted || 'Hoje'}</span>
-          </div>
-          
-          <div class="order-badges-wrap">
-            <!-- Badge de Pagamento -->
-            ${isPaid 
-              ? `<span class="badge-paid">🟢 Pago</span>` 
-              : `<span class="badge-unpaid">🟡 Pag. Pendente</span>`}
-            
-            <!-- Badge de Saída para Entrega (VERMELHO) -->
-            ${isDispatched 
-              ? `<span class="badge-dispatched-red">🛵 SAIU P/ ENTREGA</span>` 
-              : ''}
-
-            <!-- Badge de Concluído -->
-            ${order.isCompleted 
-              ? `<span class="badge-completed">✓ Entregue</span>` 
-              : ''}
-          </div>
-        </div>
-
-        <!-- Dados do Cliente e Endereço -->
-        <div class="order-customer-info">
-          <div class="order-cust-name">
-            👤 <strong>${order.customer.name}</strong>
-          </div>
-          <div>
-            <a href="https://wa.me/55${order.customer.phone.replace(/\D/g, '')}" target="_blank" class="order-cust-phone">
-              📱 WhatsApp: ${order.customer.phone}
-            </a>
-          </div>
-          <div class="order-address-box">
-            📍 <strong>Endereço:</strong> ${order.customer.street}, ${order.customer.neighborhood} 
-            ${order.customer.complement ? ' - ' + order.customer.complement : ''}
-          </div>
-          ${order.notes ? `<div style="font-size: 11.5px; color: #b45309; margin-top: 2px;">📝 Obs: ${order.notes}</div>` : ''}
-        </div>
-
-        <!-- Itens do Pedido -->
-        <div class="order-items-list">
-          ${order.items.map(item => `
-            <div class="order-item-row">
-              <span class="order-item-qty-name"><strong>${item.qty}x</strong> ${item.title}</span>
-              <span class="order-item-val">${formatCurrency(item.price * item.qty)}</span>
-            </div>
-          `).join('')}
-        </div>
-
-        <!-- Total e Pagamento -->
-        <div class="order-total-row">
-          <span>Forma: <strong>${order.payment.method}</strong></span>
-          <span>Total: <strong>${formatCurrency(order.total)}</strong></span>
-        </div>
-
-        <!-- Ações do Gestor de Pedidos -->
-        <div class="order-actions-bar">
-          <!-- Botão Marcar como Pago -->
-          <button class="order-action-btn btn-toggle-paid ${isPaid ? 'is-paid' : ''}" onclick="togglePaidStatus('${order.id}')">
-            ${isPaid ? '✓ Pago 🟢' : 'Marcar como Pago'}
-          </button>
-
-          <!-- Botão Marcar como Saiu para Entrega (FICA VERMELHO) -->
-          <button class="order-action-btn btn-toggle-dispatch ${isDispatched ? 'is-dispatched' : ''}" onclick="toggleDispatchStatus('${order.id}')">
-            ${isDispatched ? '🛵 Em Rota 🔴' : '🛵 Saiu p/ Entrega'}
-          </button>
-        </div>
-
-        <div class="order-footer-actions">
-          <button class="btn-complete-order" onclick="toggleCompleteStatus('${order.id}')">
-            ${order.isCompleted ? 'Reabrir Pedido' : '✓ Marcar como Concluído'}
-          </button>
-          <button class="btn-delete-order" onclick="deleteOrder('${order.id}')">
-            Excluir
-          </button>
-        </div>
-
-      </div>
-    `;
-  }).join('');
-}
-
-// Ações de Controle da Proprietária
-function togglePaidStatus(orderId) {
-  const order = orders.find(o => o.id === orderId);
-  if (!order) return;
-
-  order.isPaid = !order.isPaid;
-  saveOrders();
-  showToast(`Pedido #${order.id}: ${order.isPaid ? 'Marcado como Pago 🟢' : 'Marcado como Pendente de Pagamento'}`);
-}
-
-function toggleDispatchStatus(orderId) {
-  const order = orders.find(o => o.id === orderId);
-  if (!order) return;
-
-  order.isDispatched = !order.isDispatched;
-  if (order.isDispatched) {
-    order.isCompleted = false; // Se saiu para entrega, não está finalizado ainda
-  }
-  saveOrders();
-  showToast(`Pedido #${order.id}: ${order.isDispatched ? 'Saiu para Entrega! 🔴' : 'Retornado para preparo'}`);
-}
-
-function toggleCompleteStatus(orderId) {
-  const order = orders.find(o => o.id === orderId);
-  if (!order) return;
-
-  order.isCompleted = !order.isCompleted;
-  if (order.isCompleted) {
-    order.isDispatched = false;
-  }
-  saveOrders();
-  showToast(`Pedido #${order.id}: ${order.isCompleted ? 'Concluído com sucesso! ✓' : 'Reaberto'}`);
-}
-
-function deleteOrder(orderId) {
-  if (confirm(`Tem certeza que deseja excluir o Pedido #${orderId}?`)) {
-    orders = orders.filter(o => o.id !== orderId);
-    saveOrders();
-    showToast(`Pedido #${orderId} excluído.`);
-  }
-}
-
-/* ==========================================================================
-   TOAST NOTIFICATIONS
+   TOAST
    ========================================================================== */
 let toastTimeout;
 function showToast(message) {
@@ -707,15 +898,15 @@ function showToast(message) {
   clearTimeout(toastTimeout);
   toastTimeout = setTimeout(() => {
     toastNotification.classList.remove('show');
-  }, 2300);
+  }, 2400);
 }
 
 /* ==========================================================================
    INICIALIZAÇÃO
    ========================================================================== */
 document.addEventListener('DOMContentLoaded', () => {
-  loadOrders();
+  loadData();
   renderProducts();
   updateCartUI();
-  updateAdminCounters();
+  updateAdminMetrics();
 });

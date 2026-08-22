@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>RU CUCCINA | Massas & Risotos</title>
-  <meta name="description" content="Cardápio digital RU CUCCINA - Massas artesanais e risotos cremosos preparados com excelência.">
+  <meta name="description" content="Cardápio digital e delivery RU CUCCINA - Massas artesanais e risotos cremosos.">
   
   <!-- Google Fonts -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -15,63 +15,54 @@
 </head>
 <body>
   <div class="app-wrapper">
-    
-    <!-- Top System Switcher Bar (Cardápio vs Gestão de Pedidos) -->
-    <div class="system-switcher-bar">
-      <button class="switcher-tab active" id="tabMenuBtn">
-        <svg class="switcher-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M18 8h1a4 4 0 0 1 0 8h-1"></path>
-          <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path>
-          <line x1="6" y1="1" x2="6" y2="4"></line>
-          <line x1="10" y1="1" x2="10" y2="4"></line>
-          <line x1="14" y1="1" x2="14" y2="4"></line>
-        </svg>
-        <span>Cardápio</span>
-      </button>
-      <button class="switcher-tab" id="tabAdminBtn">
-        <svg class="switcher-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
-          <line x1="8" y1="21" x2="16" y2="21"></line>
-          <line x1="12" y1="17" x2="12" y2="21"></line>
-        </svg>
-        <span>Painel de Pedidos</span>
-        <span class="admin-orders-counter" id="adminPendingCounter" style="display: none;">0</span>
-      </button>
-    </div>
 
-    <!-- VIEW 1: CLIENT MENU & STOREFRONT -->
-    <main class="mobile-container view-panel active" id="clientMenuView">
+    <!-- ==========================================================================
+         VIEW 1: CLIENT STOREFRONT (Cardápio Digital do RU CUCCINA)
+         ========================================================================== -->
+    <main class="view-screen active" id="clientStoreView">
       
-      <!-- Top Header Section -->
+      <!-- Top Header Section (Fundo Verde Escuro com Textura) -->
       <header class="header-section">
-        <div class="header-background-pattern"></div>
         <div class="header-content">
           
-          <!-- Top Bar: Instagram Link & Shopping Bag Icon -->
+          <!-- Top Bar: Instagram Link, User Login Button, Shopping Bag Icon -->
           <div class="top-nav">
-            <a href="https://www.instagram.com/rucuccina?igsi=MWN0dXU3NmdvZHg5Yg==" target="_blank" rel="noopener noreferrer" class="social-top-btn" aria-label="Instagram RU CUCCINA">
-              <svg class="instagram-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+            <a href="https://www.instagram.com/rucuccina?igsi=MWN0dXU3NmdvZHg5Yg==" target="_blank" rel="noopener noreferrer" class="nav-round-btn" aria-label="Instagram RU CUCCINA" title="Instagram @rucuccina">
+              <svg class="nav-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                 <rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect>
                 <path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path>
                 <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
               </svg>
             </a>
-            <button class="cart-btn" id="cartOpenBtn" aria-label="Abrir Carrinho de Compras">
-              <svg class="bag-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
-                <line x1="3" y1="6" x2="21" y2="6"></line>
-                <path d="M16 10a4 4 0 0 1-8 0"></path>
-              </svg>
-              <span class="cart-badge" id="cartBadge">0</span>
-            </button>
+
+            <div class="top-nav-right">
+              <!-- Auth / User Button -->
+              <button class="nav-auth-btn" id="authModalOpenBtn" aria-label="Entrar ou Cadastrar">
+                <svg class="nav-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                  <circle cx="12" cy="7" r="4"></circle>
+                </svg>
+                <span id="navAuthLabel">Entrar</span>
+              </button>
+
+              <!-- Shopping Cart Button -->
+              <button class="nav-round-btn cart-btn" id="cartOpenBtn" aria-label="Abrir Carrinho de Compras">
+                <svg class="nav-svg-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                  <path d="M6 2L3 6v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V6l-3-4z"></path>
+                  <line x1="3" y1="6" x2="21" y2="6"></line>
+                  <path d="M16 10a4 4 0 0 1-8 0"></path>
+                </svg>
+                <span class="cart-badge" id="cartBadge">0</span>
+              </button>
+            </div>
           </div>
 
-          <!-- Brand Logo & Titles -->
+          <!-- Brand Logo & Identity -->
           <div class="brand-area">
             <img src="logo_transparent.png" alt="RU CUCCINA - Massas & Risotos" class="header-brand-logo">
           </div>
 
-          <!-- Search Bar -->
+          <!-- Search Bar (Pill shape) -->
           <div class="search-container">
             <div class="search-box">
               <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
@@ -85,7 +76,7 @@
         </div>
       </header>
 
-      <!-- Main Menu Section -->
+      <!-- Main Menu Section (Curved Sheet) -->
       <section class="menu-section">
         
         <!-- Category Tabs -->
@@ -164,37 +155,56 @@
           <span>Siga @rucuccina no Instagram</span>
         </a>
         <p class="footer-copy">RU CUCCINA • MASSAS &amp; RISOTOS</p>
+        
+        <!-- Discreet Manager Access Link -->
+        <button class="admin-access-link" id="adminFooterLoginBtn">
+          🔒 Acesso Gestor / Cozinha
+        </button>
       </footer>
 
     </main>
 
-    <!-- VIEW 2: ADMIN ORDERS MANAGEMENT DASHBOARD (PAINEL DE PEDIDOS DA PROPRIETÁRIA) -->
-    <main class="mobile-container view-panel" id="adminOrdersView" style="display: none;">
+    <!-- ==========================================================================
+         VIEW 2: ADMIN DASHBOARD (Painel de Gestão de Pedidos da Proprietária)
+         ========================================================================== -->
+    <main class="view-screen" id="adminDashboardView" style="display: none;">
       
       <!-- Admin Header -->
       <header class="admin-header">
         <div class="admin-header-top">
-          <div class="admin-title-wrap">
+          <div class="admin-brand-wrap">
+            <span class="admin-badge-role">👑 Painel da Gerência</span>
             <h1 class="admin-title">Gestão de Pedidos</h1>
             <p class="admin-subtitle">RU CUCCINA Delivery</p>
           </div>
-          <button class="refresh-orders-btn" id="refreshOrdersBtn" title="Atualizar Pedidos">
-            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M23 4v6h-6"></path>
-              <path d="M1 20v-6h6"></path>
-              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
-            </svg>
-          </button>
+          
+          <div class="admin-top-actions">
+            <button class="admin-refresh-btn" id="adminRefreshBtn" title="Atualizar Lista de Pedidos">
+              <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M23 4v6h-6"></path>
+                <path d="M1 20v-6h6"></path>
+                <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+              </svg>
+            </button>
+            <button class="admin-logout-btn" id="adminLogoutBtn" title="Sair do Painel">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                <polyline points="16 17 21 12 16 7"></polyline>
+                <line x1="21" y1="12" x2="9" y2="12"></line>
+              </svg>
+              <span>Sair</span>
+            </button>
+          </div>
         </div>
 
-        <!-- Metrics Cards -->
+        <!-- Metrics Grid -->
         <div class="admin-metrics-grid">
           <div class="metric-card">
             <span class="metric-label">Total Pedidos</span>
             <span class="metric-val" id="metricTotalOrders">0</span>
           </div>
           <div class="metric-card metric-pending">
-            <span class="metric-label">Pendentes</span>
+            <span class="metric-label">Pendentes 🟡</span>
             <span class="metric-val" id="metricPendingOrders">0</span>
           </div>
           <div class="metric-card metric-paid">
@@ -225,14 +235,23 @@
 
         <div class="admin-empty-orders" id="adminEmptyOrders" style="display: none;">
           <span class="empty-icon">🛵</span>
-          <h3>Nenhum pedido encontrado</h3>
-          <p>Quando os clientes fizerem pedidos pelo cardápio, eles aparecerão aqui em tempo real.</p>
+          <h3>Nenhum pedido nesta categoria</h3>
+          <p>Novos pedidos feitos pelos clientes aparecem automaticamente aqui em tempo real.</p>
         </div>
       </section>
 
+      <!-- Bottom return to menu -->
+      <div class="admin-bottom-bar">
+        <button class="admin-view-menu-btn" id="adminBackToMenuBtn">
+          ← Visualizar Cardápio como Cliente
+        </button>
+      </div>
+
     </main>
 
-    <!-- Shopping Cart Drawer / Modal -->
+    <!-- ==========================================================================
+         SHOPPING CART DRAWER (Sacola de Compras)
+         ========================================================================== -->
     <div class="cart-overlay" id="cartOverlay"></div>
     <aside class="cart-drawer" id="cartDrawer" aria-label="Carrinho de Compras">
       <div class="cart-header">
@@ -268,37 +287,132 @@
       </div>
     </aside>
 
-    <!-- Checkout Modal (Customer Delivery Details) -->
-    <div class="modal-overlay" id="checkoutModalOverlay">
-      <div class="checkout-modal" id="checkoutModal">
+    <!-- ==========================================================================
+         MODAL DE AUTENTICAÇÃO: LOGIN & CADASTRO DE CLIENTE / ADMIN
+         ========================================================================== -->
+    <div class="modal-overlay" id="authModalOverlay">
+      <div class="auth-modal">
+        
         <div class="modal-header">
           <div class="modal-title-wrap">
-            <span class="modal-badge">🛵 Delivery</span>
-            <h2>Dados para Entrega</h2>
+            <img src="logo_transparent.png" alt="RU CUCCINA" class="modal-logo-small">
+          </div>
+          <button class="modal-close-btn" id="authCloseBtn">&times;</button>
+        </div>
+
+        <!-- Auth Tabs: Login vs Cadastro -->
+        <div class="auth-tabs">
+          <button class="auth-tab-btn active" id="authTabLogin">Entrar</button>
+          <button class="auth-tab-btn" id="authTabRegister">Criar Conta</button>
+        </div>
+
+        <!-- Tab 1: Form de Login (Admin e Clientes) -->
+        <form id="loginForm" class="auth-form">
+          <div class="form-group">
+            <label for="loginIdentifier">CPF, E-mail ou Usuário *</label>
+            <input type="text" id="loginIdentifier" placeholder="Seu CPF, e-mail ou 'admin'" required autocomplete="username">
+          </div>
+
+          <div class="form-group">
+            <label for="loginPassword">Senha *</label>
+            <input type="password" id="loginPassword" placeholder="Sua senha" required autocomplete="current-password">
+          </div>
+
+          <div class="admin-hint-box">
+            💡 <strong>Acesso Admin:</strong> Usuário <code>admin</code> | Senha <code>admin123</code>
+          </div>
+
+          <button type="submit" class="auth-submit-btn">
+            <span>Entrar na Conta</span>
+          </button>
+        </form>
+
+        <!-- Tab 2: Form de Cadastro de Cliente (com CPF, Nome, Endereço e Contato) -->
+        <form id="registerForm" class="auth-form" style="display: none;">
+          <div class="form-group">
+            <label for="regName">Nome Completo *</label>
+            <input type="text" id="regName" placeholder="Ex: Maria da Silva" required>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="regCpf">CPF *</label>
+              <input type="text" id="regCpf" placeholder="000.000.000-00" required maxlength="14">
+            </div>
+            <div class="form-group">
+              <label for="regPhone">WhatsApp / Telefone *</label>
+              <input type="tel" id="regPhone" placeholder="(11) 90000-0000" required maxlength="15">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="regStreet">Rua e Número *</label>
+            <input type="text" id="regStreet" placeholder="Ex: Rua das Flores, 123" required>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="regNeighborhood">Bairro *</label>
+              <input type="text" id="regNeighborhood" placeholder="Ex: Centro" required>
+            </div>
+            <div class="form-group">
+              <label for="regComplement">Compl. / Apto</label>
+              <input type="text" id="regComplement" placeholder="Ex: Apto 32">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="regPassword">Crie uma Senha *</label>
+            <input type="password" id="regPassword" placeholder="Mínimo 4 caracteres" required minlength="4">
+          </div>
+
+          <button type="submit" class="auth-submit-btn">
+            <span>Concluir Cadastro</span>
+          </button>
+        </form>
+
+      </div>
+    </div>
+
+    <!-- ==========================================================================
+         MODAL DE CHECKOUT (Dados de Entrega do Pedido)
+         ========================================================================== -->
+    <div class="modal-overlay" id="checkoutModalOverlay">
+      <div class="checkout-modal">
+        <div class="modal-header">
+          <div class="modal-title-wrap">
+            <span class="modal-badge">🛵 Delivery RU CUCCINA</span>
+            <h2>Confirmar Entrega</h2>
           </div>
           <button class="modal-close-btn" id="checkoutCloseBtn">&times;</button>
         </div>
 
         <form id="deliveryForm" class="checkout-form">
           <div class="form-group">
-            <label for="custName">Seu Nome *</label>
+            <label for="custName">Nome do Destinatário *</label>
             <input type="text" id="custName" placeholder="Ex: Maria Silva" required>
           </div>
 
-          <div class="form-group">
-            <label for="custPhone">WhatsApp / Telefone *</label>
-            <input type="tel" id="custPhone" placeholder="(00) 00000-0000" required>
+          <div class="form-row">
+            <div class="form-group">
+              <label for="custCpf">CPF do Cliente *</label>
+              <input type="text" id="custCpf" placeholder="000.000.000-00" required maxlength="14">
+            </div>
+            <div class="form-group">
+              <label for="custPhone">WhatsApp / Telefone *</label>
+              <input type="tel" id="custPhone" placeholder="(11) 90000-0000" required maxlength="15">
+            </div>
           </div>
 
           <div class="form-group">
-            <label for="custStreet">Rua e Número *</label>
+            <label for="custStreet">Rua e Número de Entrega *</label>
             <input type="text" id="custStreet" placeholder="Ex: Av. Paulista, 1000" required>
           </div>
 
           <div class="form-row">
             <div class="form-group">
               <label for="custNeighborhood">Bairro *</label>
-              <input type="text" id="custNeighborhood" placeholder="Ex: Centro" required>
+              <input type="text" id="custNeighborhood" placeholder="Ex: Bela Vista" required>
             </div>
             <div class="form-group">
               <label for="custComplement">Compl. / Apto</label>
@@ -323,7 +437,7 @@
 
           <div class="form-group">
             <label for="orderNotes">Observações do Pedido</label>
-            <input type="text" id="orderNotes" placeholder="Ex: Sem queijo ralado, talher extra...">
+            <input type="text" id="orderNotes" placeholder="Ex: Sem queijo ralado, caprichar no molho...">
           </div>
 
           <div class="checkout-summary-box">
@@ -334,7 +448,7 @@
           </div>
 
           <button type="submit" class="submit-order-btn" id="confirmOrderBtn">
-            <span>Confirmar Pedido</span>
+            <span>Confirmar e Enviar Pedido</span>
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
               <polyline points="20 6 9 17 4 12"></polyline>
             </svg>
@@ -343,11 +457,13 @@
       </div>
     </div>
 
-    <!-- Order Success Modal -->
+    <!-- ==========================================================================
+         MODAL DE SUCESSO DO PEDIDO
+         ========================================================================== -->
     <div class="modal-overlay" id="successModalOverlay">
       <div class="success-modal">
         <div class="success-icon-wrap">✓</div>
-        <h2 class="success-title">Pedido Recebido com Sucesso!</h2>
+        <h2 class="success-title">Pedido Confirmado!</h2>
         <p class="success-desc">Seu pedido foi registrado no sistema da <strong>RU CUCCINA</strong>.</p>
         
         <div class="success-order-card" id="successOrderDetails">
@@ -356,7 +472,7 @@
 
         <div class="success-actions">
           <button class="whatsapp-send-btn" id="sendWhatsAppBtn">
-            <span>Enviar Cópia no WhatsApp</span>
+            <span>Enviar Pedido pelo WhatsApp</span>
           </button>
           <button class="back-menu-btn" id="successBackBtn">Voltar ao Cardápio</button>
         </div>

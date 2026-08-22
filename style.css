@@ -1,11 +1,10 @@
 /* ==========================================================================
-   RU CUCCINA - Design System & Styles
-   Matching exact visual identity from Foto.pdf
+   RU CUCCINA - Design System & Complete Delivery Application Styles
    ========================================================================== */
 
 :root {
-  /* Color Palette */
-  --color-primary-dark: #0d2218;      /* Deep Forest Italian Green */
+  /* Brand Color Palette */
+  --color-primary-dark: #0b1f14;      /* Deep Forest Italian Green */
   --color-primary-medium: #143224;    /* Medium Forest Green */
   --color-primary-light: #1e4533;     /* Light Forest Green Accent */
   
@@ -15,18 +14,25 @@
   
   --color-text-dark: #1b2620;        /* Deep Charcoal/Dark Olive */
   --color-text-muted: #5e6861;       /* Secondary description text */
-  --color-text-light: #f5f2eb;       /* Off-white/Cream text for dark elements */
+  --color-text-light: #f5f2eb;       /* Off-white/Cream text */
   --color-gold-accent: #d8c29d;      /* Warm Gold accent */
   
   --color-white: #ffffff;
   --color-border: #ded8cb;
-  --color-shadow: rgba(13, 34, 24, 0.08);
-  --color-shadow-hover: rgba(13, 34, 24, 0.15);
+  --color-shadow: rgba(11, 31, 20, 0.08);
+  --color-shadow-hover: rgba(11, 31, 20, 0.16);
+
+  /* Status Colors */
+  --color-status-paid: #15803d;       /* Green for Paid */
+  --color-status-paid-bg: #dcfce7;
+  --color-status-pending: #b45309;    /* Yellow/Amber for Pending */
+  --color-status-pending-bg: #fef3c7;
+  --color-status-red: #dc2626;        /* Red for Dispatched/On Route */
+  --color-status-red-bg: #fee2e2;
 
   /* Typography */
   --font-serif: 'Cormorant Garamond', 'Playfair Display', Georgia, serif;
   --font-sans: 'Plus Jakarta Sans', 'Montserrat', -apple-system, BlinkMacSystemFont, sans-serif;
-  --font-brand: 'Cormorant Garamond', 'Playfair Display', Georgia, serif;
 
   /* Transitions */
   --transition-smooth: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
@@ -42,7 +48,7 @@
 }
 
 html, body {
-  background-color: #121915; /* Desktop backdrop */
+  background-color: #121915;
   color: var(--color-text-dark);
   font-family: var(--font-sans);
   min-height: 100vh;
@@ -52,12 +58,12 @@ html, body {
   -webkit-font-smoothing: antialiased;
 }
 
-/* App Wrapper: Centered mobile viewport frame on desktop, 100% on mobile */
+/* Application Wrapper */
 .app-wrapper {
   width: 100%;
   max-width: 480px;
   min-height: 100vh;
-  background-color: #0b1f14; /* Solid dark green at root prevents any corner glitch */
+  background-color: #0b1f14;
   position: relative;
   box-shadow: 0 10px 40px rgba(0, 0, 0, 0.35);
   overflow-x: hidden;
@@ -65,16 +71,20 @@ html, body {
   flex-direction: column;
 }
 
-.mobile-container {
+.view-screen {
   width: 100%;
   flex: 1;
-  display: flex;
+  display: none;
   flex-direction: column;
   background-color: var(--color-bg-main);
 }
 
+.view-screen.active {
+  display: flex;
+}
+
 /* ==========================================================================
-   Header Section (Dark Forest Green matching Logo perfectly)
+   HEADER & NAVIGATION
    ========================================================================== */
 .header-section {
   position: relative;
@@ -89,7 +99,6 @@ html, body {
   z-index: 1;
 }
 
-/* Top Nav (Instagram & Cart Icons) */
 .top-nav {
   display: flex;
   justify-content: space-between;
@@ -97,13 +106,18 @@ html, body {
   margin-bottom: 4px;
 }
 
-.social-top-btn,
-.cart-btn {
+.top-nav-right {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.nav-round-btn {
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.15);
   color: var(--color-text-light);
-  width: 44px;
-  height: 44px;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -114,16 +128,35 @@ html, body {
   transition: var(--transition-smooth);
 }
 
-.social-top-btn:hover, .social-top-btn:active,
-.cart-btn:hover, .cart-btn:active {
+.nav-round-btn:hover, .nav-round-btn:active {
   background: rgba(255, 255, 255, 0.18);
   transform: scale(1.05);
 }
 
-.instagram-icon,
-.bag-icon {
-  width: 20px;
-  height: 20px;
+.nav-svg-icon {
+  width: 19px;
+  height: 19px;
+}
+
+.nav-auth-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: var(--color-text-light);
+  padding: 8px 14px;
+  border-radius: 50px;
+  font-family: var(--font-sans);
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+}
+
+.nav-auth-btn:hover {
+  background: rgba(255, 255, 255, 0.18);
+  transform: scale(1.02);
 }
 
 .cart-badge {
@@ -148,14 +181,14 @@ html, body {
   transform: scale(1.35);
 }
 
-/* Brand Identity Area */
+/* Brand Area */
 .brand-area {
   text-align: center;
-  padding: 0 0 14px 0;
+  padding: 2px 0 12px 0;
 }
 
 .header-brand-logo {
-  max-width: 200px;
+  max-width: 195px;
   width: 65%;
   height: auto;
   display: block;
@@ -163,7 +196,7 @@ html, body {
   filter: drop-shadow(0 2px 8px rgba(0, 0, 0, 0.25));
 }
 
-/* Search Bar (Pill shape inside dark header) */
+/* Search Bar */
 .search-container {
   margin-top: 8px;
   padding: 0 2px;
@@ -217,7 +250,7 @@ html, body {
 }
 
 /* ==========================================================================
-   Menu Section & Categories Nav (Curved Top Sheet)
+   MENU SECTION & CATEGORY TABS
    ========================================================================== */
 .menu-section {
   position: relative;
@@ -231,14 +264,12 @@ html, body {
   box-shadow: 0 -6px 20px rgba(0, 0, 0, 0.12);
 }
 
-/* Categories Bar - Responsive & Auto-fitting */
 .categories-nav {
   margin-bottom: 18px;
   width: 100%;
   overflow-x: auto;
   scrollbar-width: none;
   -ms-overflow-style: none;
-  -webkit-overflow-scrolling: touch;
 }
 
 .categories-nav::-webkit-scrollbar {
@@ -293,7 +324,7 @@ html, body {
 }
 
 /* ==========================================================================
-   Product Cards List (Identical to Foto.pdf)
+   PRODUCT CARDS
    ========================================================================== */
 .products-list {
   display: flex;
@@ -319,7 +350,6 @@ html, body {
   background-color: var(--color-card-hover);
 }
 
-/* Product Left: Image */
 .product-image-wrap {
   width: 105px;
   height: 105px;
@@ -341,7 +371,6 @@ html, body {
   transform: scale(1.06);
 }
 
-/* Product Right: Info */
 .product-info {
   flex: 1;
   display: flex;
@@ -371,7 +400,6 @@ html, body {
   color: var(--color-text-muted);
 }
 
-/* Bottom Price & Button Row */
 .product-bottom-row {
   display: flex;
   align-items: center;
@@ -384,11 +412,10 @@ html, body {
   font-size: 15px;
   font-weight: 700;
   color: var(--color-text-dark);
-  letter-spacing: -0.2px;
 }
 
 .add-btn {
-  background-color: var(--color-primary-dark);
+  background-color: #0b1f14;
   color: #f7f4ed;
   border: none;
   border-radius: 50px;
@@ -401,7 +428,7 @@ html, body {
   align-items: center;
   gap: 4px;
   transition: var(--transition-bounce);
-  box-shadow: 0 2px 6px rgba(13, 34, 24, 0.2);
+  box-shadow: 0 2px 6px rgba(11, 31, 20, 0.2);
 }
 
 .add-btn:hover {
@@ -409,11 +436,6 @@ html, body {
   transform: translateY(-1px) scale(1.03);
 }
 
-.add-btn:active {
-  transform: scale(0.96);
-}
-
-/* Empty Search State */
 .empty-state {
   text-align: center;
   padding: 40px 20px;
@@ -432,7 +454,7 @@ html, body {
 }
 
 .empty-reset-btn {
-  background-color: var(--color-primary-dark);
+  background-color: #0b1f14;
   color: #ffffff;
   border: none;
   padding: 8px 18px;
@@ -443,7 +465,7 @@ html, body {
 }
 
 /* ==========================================================================
-   Footer
+   FOOTER
    ========================================================================== */
 .app-footer {
   padding: 24px 20px 30px;
@@ -453,7 +475,7 @@ html, body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
 }
 
 .footer-instagram-link {
@@ -465,23 +487,19 @@ html, body {
   text-decoration: none;
   padding: 8px 16px;
   border-radius: 50px;
-  font-size: 12.5px;
+  font-size: 12px;
   font-weight: 600;
   transition: var(--transition-smooth);
-  box-shadow: 0 2px 6px rgba(11, 31, 20, 0.06);
 }
 
 .footer-instagram-link:hover {
-  background-color: var(--color-primary-dark);
+  background-color: #0b1f14;
   color: #f5f2eb;
-  transform: translateY(-1px);
-  box-shadow: 0 4px 10px rgba(11, 31, 20, 0.15);
 }
 
 .instagram-icon-small {
   width: 16px;
   height: 16px;
-  flex-shrink: 0;
 }
 
 .footer-copy {
@@ -490,8 +508,483 @@ html, body {
   letter-spacing: 0.5px;
 }
 
+.admin-access-link {
+  background: none;
+  border: none;
+  color: #949a95;
+  font-size: 11.5px;
+  cursor: pointer;
+  padding: 4px 8px;
+  text-decoration: underline;
+  transition: var(--transition-smooth);
+}
+
+.admin-access-link:hover {
+  color: #0b1f14;
+}
+
 /* ==========================================================================
-   Cart Drawer & Overlay
+   ADMIN ORDERS DASHBOARD (Painel de Gestão da Proprietária)
+   ========================================================================== */
+.admin-header {
+  background-color: #0b1f14;
+  background-image: 
+    linear-gradient(180deg, rgba(11, 31, 20, 0.9) 0%, rgba(11, 31, 20, 0.98) 100%),
+    url('IMG_9187.PNG');
+  background-size: 260px, 260px;
+  padding: 20px 18px 24px 18px;
+  color: #ffffff;
+  border-bottom-left-radius: 28px;
+  border-bottom-right-radius: 28px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+}
+
+.admin-header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 16px;
+}
+
+.admin-badge-role {
+  font-size: 10.5px;
+  font-weight: 700;
+  color: #fbbf24;
+  background: rgba(251, 191, 36, 0.15);
+  padding: 2px 8px;
+  border-radius: 50px;
+  display: inline-block;
+  margin-bottom: 4px;
+}
+
+.admin-title {
+  font-family: var(--font-serif);
+  font-size: 24px;
+  font-weight: 700;
+  color: #f7f3ea;
+}
+
+.admin-subtitle {
+  font-size: 11.5px;
+  color: #c9bda5;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+}
+
+.admin-top-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.admin-refresh-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: #ffffff;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+}
+
+.admin-refresh-btn:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+.admin-logout-btn {
+  background: rgba(220, 38, 38, 0.2);
+  border: 1px solid rgba(220, 38, 38, 0.4);
+  color: #fca5a5;
+  padding: 8px 12px;
+  border-radius: 50px;
+  font-size: 12px;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+}
+
+.admin-logout-btn:hover {
+  background: #dc2626;
+  color: #ffffff;
+}
+
+/* Metrics Grid */
+.admin-metrics-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.metric-card {
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 14px;
+  padding: 10px 14px;
+  display: flex;
+  flex-direction: column;
+}
+
+.metric-label {
+  font-size: 10.5px;
+  color: #c9bda5;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+}
+
+.metric-val {
+  font-size: 20px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.metric-pending .metric-val {
+  color: #fbbf24;
+}
+
+.metric-paid .metric-val {
+  color: #4ade80;
+}
+
+.metric-dispatched {
+  background: rgba(220, 38, 38, 0.2);
+  border-color: rgba(220, 38, 38, 0.45);
+}
+
+.metric-dispatched .metric-val {
+  color: #f87171;
+}
+
+/* Admin Filters Bar */
+.admin-filters-bar {
+  display: flex;
+  gap: 6px;
+  overflow-x: auto;
+  padding: 2px 0;
+  scrollbar-width: none;
+}
+
+.admin-filters-bar::-webkit-scrollbar {
+  display: none;
+}
+
+.admin-filter-btn {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: #eae5dc;
+  padding: 7px 12px;
+  border-radius: 50px;
+  font-size: 11.5px;
+  font-weight: 600;
+  white-space: nowrap;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+}
+
+.admin-filter-btn.active {
+  background: #ffffff;
+  color: #0b1f14;
+  border-color: #ffffff;
+  font-weight: 700;
+}
+
+.admin-filter-btn.filter-dispatched-btn.active {
+  background: #dc2626;
+  color: #ffffff;
+  border-color: #dc2626;
+}
+
+/* Admin Orders List */
+.admin-orders-content {
+  padding: 18px 14px 20px 14px;
+  flex: 1;
+}
+
+.admin-orders-list {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+/* ==========================================================================
+   ORDER CARD & RED DISPATCHED STATUS (Exclusivo para a Cliente)
+   ========================================================================== */
+.order-card {
+  background-color: #ffffff;
+  border-radius: 18px;
+  padding: 16px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
+  border: 1.5px solid #ded8cb;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  transition: var(--transition-smooth);
+}
+
+/* DESTAQUE EM VERMELHO: Pedidos que Saíram para Entrega */
+.order-card.status-dispatched {
+  background: linear-gradient(135deg, #fff5f5 0%, #ffeded 100%);
+  border: 2.5px solid #dc2626;
+  box-shadow: 0 6px 20px rgba(220, 38, 38, 0.24);
+}
+
+.order-card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  border-bottom: 1px solid #f0eae1;
+  padding-bottom: 10px;
+}
+
+.order-id-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.order-num {
+  font-family: var(--font-serif);
+  font-size: 18px;
+  font-weight: 700;
+  color: #0b1f14;
+}
+
+.order-card.status-dispatched .order-num {
+  color: #b91c1c;
+}
+
+.order-time {
+  font-size: 11px;
+  color: #7b837c;
+}
+
+.order-badges-wrap {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.badge-paid {
+  background-color: #dcfce7;
+  color: #15803d;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 50px;
+  border: 1px solid #86efac;
+}
+
+.badge-unpaid {
+  background-color: #fef3c7;
+  color: #b45309;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 50px;
+  border: 1px solid #fde68a;
+}
+
+.badge-dispatched-red {
+  background-color: #dc2626;
+  color: #ffffff;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 50px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  box-shadow: 0 2px 6px rgba(220, 38, 38, 0.35);
+}
+
+.badge-completed {
+  background-color: #e0f2fe;
+  color: #0369a1;
+  font-size: 11px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 50px;
+}
+
+.order-customer-info {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.order-cust-name {
+  font-size: 14px;
+  font-weight: 700;
+  color: #1b2620;
+}
+
+.order-cust-phone {
+  font-size: 12.5px;
+  color: #059669;
+  font-weight: 600;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.order-address-box {
+  background-color: #f7f4ee;
+  border-radius: 10px;
+  padding: 8px 10px;
+  font-size: 12px;
+  color: #3f4742;
+  margin-top: 4px;
+  line-height: 1.35;
+}
+
+.order-card.status-dispatched .order-address-box {
+  background-color: #fee2e2;
+  color: #7f1d1d;
+}
+
+.order-items-list {
+  border-top: 1px dashed #ded8cb;
+  border-bottom: 1px dashed #ded8cb;
+  padding: 8px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.order-item-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12.5px;
+}
+
+.order-total-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  font-size: 14.5px;
+  font-weight: 700;
+  color: #0b1f14;
+}
+
+.order-card.status-dispatched .order-total-row {
+  color: #b91c1c;
+}
+
+.order-actions-bar {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.order-action-btn {
+  padding: 8px 10px;
+  border-radius: 50px;
+  font-size: 11.5px;
+  font-weight: 700;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  transition: var(--transition-smooth);
+}
+
+.btn-toggle-paid {
+  background-color: #dcfce7;
+  color: #166534;
+  border: 1px solid #86efac;
+}
+
+.btn-toggle-paid.is-paid {
+  background-color: #15803d;
+  color: #ffffff;
+}
+
+.btn-toggle-dispatch {
+  background-color: #fee2e2;
+  color: #991b1b;
+  border: 1px solid #fca5a5;
+}
+
+.btn-toggle-dispatch.is-dispatched {
+  background-color: #dc2626;
+  color: #ffffff;
+  border-color: #dc2626;
+}
+
+.order-footer-actions {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.btn-complete-order {
+  flex: 1;
+  background-color: #0b1f14;
+  color: #ffffff;
+  padding: 8px;
+  border-radius: 50px;
+  font-size: 11px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+}
+
+.btn-delete-order {
+  background: none;
+  border: 1px solid #fca5a5;
+  color: #dc2626;
+  padding: 8px 12px;
+  border-radius: 50px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.admin-bottom-bar {
+  padding: 16px;
+  text-align: center;
+  border-top: 1px solid var(--color-border);
+}
+
+.admin-view-menu-btn {
+  background-color: #eae5dc;
+  color: #0b1f14;
+  border: 1px solid var(--color-border);
+  padding: 10px 18px;
+  border-radius: 50px;
+  font-size: 12.5px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+}
+
+.admin-view-menu-btn:hover {
+  background-color: #0b1f14;
+  color: #ffffff;
+}
+
+.admin-empty-orders {
+  text-align: center;
+  padding: 40px 20px;
+  color: #7b837c;
+}
+
+/* ==========================================================================
+   SHOPPING CART DRAWER
    ========================================================================== */
 .cart-overlay {
   position: fixed;
@@ -567,7 +1060,6 @@ html, body {
   font-size: 26px;
   color: var(--color-text-muted);
   cursor: pointer;
-  line-height: 1;
 }
 
 .cart-body {
@@ -613,7 +1105,6 @@ html, body {
   font-weight: 700;
   text-transform: uppercase;
   color: var(--color-text-dark);
-  margin-bottom: 2px;
 }
 
 .cart-item-price {
@@ -702,545 +1193,7 @@ html, body {
 }
 
 /* ==========================================================================
-   Toast Notification
-   ========================================================================== */
-.toast {
-  position: fixed;
-  bottom: 24px;
-  left: 50%;
-  transform: translateX(-50%) translateY(100px);
-  background-color: var(--color-primary-dark);
-  color: #ffffff;
-  padding: 10px 20px;
-  border-radius: 50px;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
-  font-size: 13px;
-  font-weight: 600;
-  z-index: 200;
-  opacity: 0;
-  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease;
-  pointer-events: none;
-}
-
-.toast.show {
-  transform: translateX(-50%) translateY(0);
-  opacity: 1;
-}
-
-.toast-content {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.toast-check {
-/* ==========================================================================
-   SYSTEM SWITCHER (Cardápio vs Gestão de Pedidos)
-   ========================================================================== */
-.system-switcher-bar {
-  display: flex;
-  background-color: #08160e;
-  padding: 8px 12px;
-  gap: 8px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  position: sticky;
-  top: 0;
-  z-index: 50;
-}
-
-.switcher-tab {
-  flex: 1;
-  background: rgba(255, 255, 255, 0.06);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: #c9bda5;
-  padding: 10px 14px;
-  border-radius: 12px;
-  font-family: var(--font-sans);
-  font-size: 12.5px;
-  font-weight: 600;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  cursor: pointer;
-  position: relative;
-  transition: var(--transition-smooth);
-}
-
-.switcher-tab:hover {
-  background: rgba(255, 255, 255, 0.12);
-  color: #ffffff;
-}
-
-.switcher-tab.active {
-  background-color: #143224;
-  border-color: #2b6649;
-  color: #ffffff;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-}
-
-.switcher-icon {
-  width: 16px;
-  height: 16px;
-}
-
-.admin-orders-counter {
-  background-color: #dc2626;
-  color: #ffffff;
-  font-size: 10px;
-  font-weight: 700;
-  padding: 2px 6px;
-  border-radius: 50px;
-  margin-left: 2px;
-}
-
-.view-panel {
-  display: none;
-}
-
-.view-panel.active {
-  display: flex;
-}
-
-/* ==========================================================================
-   ADMIN ORDERS DASHBOARD (Painel de Gestão da Proprietária)
-   ========================================================================== */
-.admin-header {
-  background-color: #0b1f14;
-  background-image: 
-    linear-gradient(180deg, rgba(11, 31, 20, 0.9) 0%, rgba(11, 31, 20, 0.98) 100%),
-    url('IMG_9187.PNG');
-  background-size: 260px, 260px;
-  padding: 20px 18px 24px 18px;
-  color: #ffffff;
-  border-bottom-left-radius: 28px;
-  border-bottom-right-radius: 28px;
-  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
-}
-
-.admin-header-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 16px;
-}
-
-.admin-title {
-  font-family: var(--font-serif);
-  font-size: 24px;
-  font-weight: 700;
-  color: #f7f3ea;
-  letter-spacing: 0.5px;
-}
-
-.admin-subtitle {
-  font-size: 11.5px;
-  color: #c9bda5;
-  letter-spacing: 1px;
-  text-transform: uppercase;
-}
-
-.refresh-orders-btn {
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: #ffffff;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: var(--transition-smooth);
-}
-
-.refresh-orders-btn:hover {
-  background: rgba(255, 255, 255, 0.22);
-  transform: rotate(180deg);
-}
-
-/* Metrics Grid */
-.admin-metrics-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 10px;
-  margin-bottom: 16px;
-}
-
-.metric-card {
-  background: rgba(255, 255, 255, 0.07);
-  border: 1px solid rgba(255, 255, 255, 0.12);
-  border-radius: 14px;
-  padding: 10px 14px;
-  display: flex;
-  flex-direction: column;
-}
-
-.metric-label {
-  font-size: 10.5px;
-  color: #c9bda5;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  margin-bottom: 4px;
-}
-
-.metric-val {
-  font-size: 20px;
-  font-weight: 700;
-  color: #ffffff;
-}
-
-.metric-pending .metric-val {
-  color: #fbbf24;
-}
-
-.metric-paid .metric-val {
-  color: #4ade80;
-}
-
-.metric-dispatched {
-  background: rgba(220, 38, 38, 0.18);
-  border-color: rgba(220, 38, 38, 0.4);
-}
-
-.metric-dispatched .metric-val {
-  color: #f87171;
-}
-
-/* Admin Filters Bar */
-.admin-filters-bar {
-  display: flex;
-  gap: 6px;
-  overflow-x: auto;
-  padding: 2px 0;
-  scrollbar-width: none;
-}
-
-.admin-filters-bar::-webkit-scrollbar {
-  display: none;
-}
-
-.admin-filter-btn {
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  color: #eae5dc;
-  padding: 7px 12px;
-  border-radius: 50px;
-  font-size: 11.5px;
-  font-weight: 600;
-  white-space: nowrap;
-  cursor: pointer;
-  transition: var(--transition-smooth);
-}
-
-.admin-filter-btn:hover {
-  background: rgba(255, 255, 255, 0.18);
-}
-
-.admin-filter-btn.active {
-  background: #ffffff;
-  color: #0b1f14;
-  border-color: #ffffff;
-  font-weight: 700;
-}
-
-.admin-filter-btn.filter-dispatched-btn.active {
-  background: #dc2626;
-  color: #ffffff;
-  border-color: #dc2626;
-}
-
-/* Admin Orders Content & List */
-.admin-orders-content {
-  padding: 20px 14px 40px 14px;
-  flex: 1;
-}
-
-.admin-orders-list {
-  display: flex;
-  flex-direction: column;
-  gap: 14px;
-}
-
-/* ==========================================================================
-   ORDER CARD & RED DISPATCHED STATUS
-   ========================================================================== */
-.order-card {
-  background-color: #ffffff;
-  border-radius: 18px;
-  padding: 16px;
-  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
-  border: 1.5px solid #ded8cb;
-  display: flex;
-  flex-direction: column;
-  gap: 12px;
-  transition: var(--transition-smooth);
-}
-
-/* EXCLUSIVO: Pedidos que Saíram para Entrega ficam em VERMELHO conforme solicitado! */
-.order-card.status-dispatched {
-  background: linear-gradient(135deg, #fff5f5 0%, #ffeded 100%);
-  border: 2.5px solid #dc2626;
-  box-shadow: 0 6px 20px rgba(220, 38, 38, 0.22);
-}
-
-.order-card-top {
-  display: flex;
-  justify-content: space-between;
-  align-items: flex-start;
-  border-bottom: 1px solid #f0eae1;
-  padding-bottom: 10px;
-}
-
-.order-id-wrap {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
-
-.order-num {
-  font-family: var(--font-serif);
-  font-size: 18px;
-  font-weight: 700;
-  color: #0b1f14;
-}
-
-.order-card.status-dispatched .order-num {
-  color: #b91c1c;
-}
-
-.order-time {
-  font-size: 11px;
-  color: #7b837c;
-}
-
-.order-badges-wrap {
-  display: flex;
-  gap: 6px;
-  flex-wrap: wrap;
-  justify-content: flex-end;
-}
-
-.badge-paid {
-  background-color: #dcfce7;
-  color: #15803d;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 3px 8px;
-  border-radius: 50px;
-  border: 1px solid #86efac;
-}
-
-.badge-unpaid {
-  background-color: #fef3c7;
-  color: #b45309;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 3px 8px;
-  border-radius: 50px;
-  border: 1px solid #fde68a;
-}
-
-.badge-dispatched-red {
-  background-color: #dc2626;
-  color: #ffffff;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 3px 8px;
-  border-radius: 50px;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-  box-shadow: 0 2px 6px rgba(220, 38, 38, 0.35);
-  animation: pulseDispatched 2s infinite ease-in-out;
-}
-
-@keyframes pulseDispatched {
-  0% { transform: scale(1); }
-  50% { transform: scale(1.04); }
-  100% { transform: scale(1); }
-}
-
-.badge-completed {
-  background-color: #e0f2fe;
-  color: #0369a1;
-  font-size: 11px;
-  font-weight: 700;
-  padding: 3px 8px;
-  border-radius: 50px;
-}
-
-/* Customer & Address Details */
-.order-customer-info {
-  display: flex;
-  flex-direction: column;
-  gap: 4px;
-}
-
-.order-cust-name {
-  font-size: 14px;
-  font-weight: 700;
-  color: #1b2620;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-}
-
-.order-cust-phone {
-  font-size: 12.5px;
-  color: #059669;
-  font-weight: 600;
-  text-decoration: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 4px;
-}
-
-.order-address-box {
-  background-color: #f7f4ee;
-  border-radius: 10px;
-  padding: 8px 10px;
-  font-size: 12px;
-  color: #3f4742;
-  margin-top: 4px;
-  line-height: 1.35;
-}
-
-.order-card.status-dispatched .order-address-box {
-  background-color: #fee2e2;
-  color: #7f1d1d;
-}
-
-/* Order Items Summary */
-.order-items-list {
-  border-top: 1px dashed #ded8cb;
-  border-bottom: 1px dashed #ded8cb;
-  padding: 8px 0;
-  display: flex;
-  flex-direction: column;
-  gap: 5px;
-}
-
-.order-item-row {
-  display: flex;
-  justify-content: space-between;
-  font-size: 12.5px;
-}
-
-.order-item-qty-name {
-  color: #1b2620;
-  font-weight: 500;
-}
-
-.order-item-val {
-  font-weight: 600;
-  color: #0b1f14;
-}
-
-.order-total-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  font-size: 14.5px;
-  font-weight: 700;
-  color: #0b1f14;
-}
-
-.order-card.status-dispatched .order-total-row {
-  color: #b91c1c;
-}
-
-/* Action Controls on Order Card */
-.order-actions-bar {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 8px;
-  margin-top: 4px;
-}
-
-.order-action-btn {
-  padding: 8px 10px;
-  border-radius: 50px;
-  font-size: 11.5px;
-  font-weight: 700;
-  border: none;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 4px;
-  transition: var(--transition-smooth);
-}
-
-.btn-toggle-paid {
-  background-color: #dcfce7;
-  color: #166534;
-  border: 1px solid #86efac;
-}
-
-.btn-toggle-paid.is-paid {
-  background-color: #15803d;
-  color: #ffffff;
-}
-
-.btn-toggle-dispatch {
-  background-color: #fee2e2;
-  color: #991b1b;
-  border: 1px solid #fca5a5;
-}
-
-.btn-toggle-dispatch.is-dispatched {
-  background-color: #dc2626;
-  color: #ffffff;
-  border-color: #dc2626;
-}
-
-.order-footer-actions {
-  display: flex;
-  justify-content: space-between;
-  gap: 8px;
-  margin-top: 4px;
-}
-
-.btn-complete-order {
-  flex: 1;
-  background-color: #0b1f14;
-  color: #ffffff;
-  padding: 8px;
-  border-radius: 50px;
-  font-size: 11px;
-  font-weight: 600;
-  border: none;
-  cursor: pointer;
-}
-
-.btn-delete-order {
-  background: none;
-  border: 1px solid #fca5a5;
-  color: #dc2626;
-  padding: 8px 12px;
-  border-radius: 50px;
-  font-size: 11px;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-/* Empty Orders State */
-.admin-empty-orders {
-  text-align: center;
-  padding: 50px 20px;
-  color: #7b837c;
-}
-
-.admin-empty-orders h3 {
-  font-family: var(--font-serif);
-  font-size: 20px;
-  color: #1b2620;
-  margin-bottom: 6px;
-}
-
-/* ==========================================================================
-   CHECKOUT & SUCCESS MODALS
+   MODALS (Auth, Checkout, Success)
    ========================================================================== */
 .modal-overlay {
   position: fixed;
@@ -1248,7 +1201,7 @@ html, body {
   left: 0;
   width: 100vw;
   height: 100vh;
-  background: rgba(11, 31, 20, 0.7);
+  background: rgba(11, 31, 20, 0.72);
   backdrop-filter: blur(5px);
   opacity: 0;
   visibility: hidden;
@@ -1265,6 +1218,7 @@ html, body {
   visibility: visible;
 }
 
+.auth-modal,
 .checkout-modal,
 .success-modal {
   background-color: var(--color-bg-main);
@@ -1293,6 +1247,12 @@ html, body {
   margin-bottom: 16px;
 }
 
+.modal-logo-small {
+  max-width: 130px;
+  height: auto;
+  display: block;
+}
+
 .modal-badge {
   font-size: 11px;
   font-weight: 700;
@@ -1319,6 +1279,37 @@ html, body {
   cursor: pointer;
 }
 
+/* Auth Tabs */
+.auth-tabs {
+  display: flex;
+  background-color: #e5dfd2;
+  border-radius: 50px;
+  padding: 3px;
+  margin-bottom: 16px;
+}
+
+.auth-tab-btn {
+  flex: 1;
+  background: none;
+  border: none;
+  padding: 8px;
+  border-radius: 50px;
+  font-family: var(--font-sans);
+  font-size: 13px;
+  font-weight: 600;
+  color: #555d57;
+  cursor: pointer;
+  transition: var(--transition-smooth);
+}
+
+.auth-tab-btn.active {
+  background-color: #0b1f14;
+  color: #ffffff;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.15);
+}
+
+/* Form Styles */
+.auth-form,
 .checkout-form {
   display: flex;
   flex-direction: column;
@@ -1362,6 +1353,48 @@ html, body {
   box-shadow: 0 0 0 3px rgba(11, 31, 20, 0.12);
 }
 
+.admin-hint-box {
+  background-color: #fdf6b2;
+  border: 1px solid #facc15;
+  border-radius: 10px;
+  padding: 8px 12px;
+  font-size: 11.5px;
+  color: #723b10;
+}
+
+.admin-hint-box code {
+  background: #ffffff;
+  padding: 2px 5px;
+  border-radius: 4px;
+  font-weight: 700;
+}
+
+.auth-submit-btn,
+.submit-order-btn {
+  background-color: #0b1f14;
+  color: #ffffff;
+  border: none;
+  padding: 14px;
+  border-radius: 50px;
+  font-family: var(--font-sans);
+  font-size: 14px;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(11, 31, 20, 0.3);
+  transition: var(--transition-smooth);
+  margin-top: 4px;
+}
+
+.auth-submit-btn:hover,
+.submit-order-btn:hover {
+  background-color: var(--color-primary-light);
+  transform: translateY(-1px);
+}
+
 .checkout-summary-box {
   background-color: #eae4d8;
   border-radius: 12px;
@@ -1380,31 +1413,7 @@ html, body {
   color: #0b1f14;
 }
 
-.submit-order-btn {
-  background-color: #0b1f14;
-  color: #ffffff;
-  border: none;
-  padding: 14px;
-  border-radius: 50px;
-  font-family: var(--font-sans);
-  font-size: 14.5px;
-  font-weight: 700;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  cursor: pointer;
-  box-shadow: 0 4px 14px rgba(11, 31, 20, 0.3);
-  transition: var(--transition-smooth);
-  margin-top: 6px;
-}
-
-.submit-order-btn:hover {
-  background-color: var(--color-primary-light);
-  transform: translateY(-1px);
-}
-
-/* Success Modal Details */
+/* Success Modal */
 .success-modal {
   text-align: center;
   padding: 28px 20px;
@@ -1422,7 +1431,6 @@ html, body {
   align-items: center;
   justify-content: center;
   margin: 0 auto 14px auto;
-  box-shadow: 0 4px 12px rgba(21, 128, 61, 0.2);
 }
 
 .success-title {
@@ -1484,12 +1492,44 @@ html, body {
   cursor: pointer;
 }
 
+/* Toast */
+.toast {
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%) translateY(100px);
+  background-color: #0b1f14;
+  color: #ffffff;
+  padding: 10px 20px;
+  border-radius: 50px;
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.25);
+  font-size: 13px;
+  font-weight: 600;
+  z-index: 200;
+  opacity: 0;
+  transition: transform 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275), opacity 0.3s ease;
+  pointer-events: none;
+}
+
+.toast.show {
+  transform: translateX(-50%) translateY(0);
+  opacity: 1;
+}
+
+.toast-content {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.toast-check {
+  color: #6ee7b7;
+  font-weight: 800;
+}
 
 /* ==========================================================================
    RESPONSIVE DESIGN (Desktop, Laptop, Tablet & Mobile)
    ========================================================================== */
-
-/* Tablets & Small Laptops (min-width: 768px) */
 @media (min-width: 768px) {
   html, body {
     background-color: #0d1712;
@@ -1541,33 +1581,12 @@ html, body {
     height: 16px;
   }
 
-  /* Grid Layout for Products on Desktop/Tablet */
   .products-list {
     display: grid;
     grid-template-columns: repeat(2, 1fr);
     gap: 16px;
   }
 
-  .product-card {
-    padding: 16px;
-    gap: 16px;
-  }
-
-  .product-image-wrap {
-    width: 110px;
-    height: 110px;
-    min-width: 110px;
-  }
-
-  .product-title {
-    font-size: 17px;
-  }
-
-  .product-description {
-    font-size: 12px;
-  }
-
-  /* Cart Drawer Desktop: Elegant slide from right side */
   .cart-drawer {
     left: auto;
     right: 0;
@@ -1592,7 +1611,6 @@ html, body {
   }
 }
 
-/* Large Desktops (min-width: 1100px) */
 @media (min-width: 1100px) {
   .app-wrapper {
     max-width: 1080px;
@@ -1616,20 +1634,5 @@ html, body {
 
   .products-list {
     gap: 20px;
-  }
-
-  .product-card {
-    padding: 18px;
-    border-radius: 22px;
-  }
-
-  .product-image-wrap {
-    width: 120px;
-    height: 120px;
-    min-width: 120px;
-  }
-
-  .product-title {
-    font-size: 18px;
   }
 }
