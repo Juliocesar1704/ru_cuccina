@@ -1,5 +1,6 @@
 /**
  * RU CUCCINA - Sistema Completo de Delivery, Autenticação e Gestão de Pedidos
+ * Integrado com Supabase (PostgreSQL & Realtime) + Fallback LocalStorage
  */
 
 // Cardápio de Produtos
@@ -54,11 +55,11 @@ const PRODUCTS = [
   }
 ];
 
-// Pedidos Iniciais de Demonstração para a Proprietária
+// Dados Iniciais de Demonstração (Fallback)
 const INITIAL_DEMO_ORDERS = [
   {
     id: '1001',
-    createdAt: new Date(Date.now() - 15 * 60000).toISOString(),
+    created_at: new Date(Date.now() - 15 * 60000).toISOString(),
     timeFormatted: 'Há 15 min',
     customer: {
       name: 'Camila Ferreira',
@@ -83,7 +84,7 @@ const INITIAL_DEMO_ORDERS = [
   },
   {
     id: '1002',
-    createdAt: new Date(Date.now() - 35 * 60000).toISOString(),
+    created_at: new Date(Date.now() - 35 * 60000).toISOString(),
     timeFormatted: 'Há 35 min',
     customer: {
       name: 'Rodrigo Santos',
@@ -109,15 +110,16 @@ const INITIAL_DEMO_ORDERS = [
   }
 ];
 
-// Estado Global
+// Estado da Aplicação
 let currentCategory = 'all';
 let searchQuery = '';
 let cart = [];
 let orders = [];
 let registeredUsers = [];
-let currentUser = null; // { role: 'admin' | 'customer', name, cpf, phone, street, neighborhood, complement }
+let currentUser = null;
 let currentAdminFilter = 'all';
 let lastCreatedOrder = null;
+let realtimeSubscription = null;
 
 // Elementos DOM - Telas
 const clientStoreView = document.getElementById('clientStoreView');
@@ -175,16 +177,27 @@ const metricPendingOrders = document.getElementById('metricPendingOrders');
 const metricPaidOrders = document.getElementById('metricPaidOrders');
 const metricDispatchedOrders = document.getElementById('metricDispatchedOrders');
 
-// Elementos DOM - Toast
+// Elementos DOM - Configuração do Banco
+const adminOpenDbConfigBtn = document.getElementById('adminOpenDbConfigBtn');
+const dbConfigModalOverlay = document.getElementById('dbConfigModalOverlay');
+const dbConfigCloseBtn = document.getElementById('dbConfigCloseBtn');
+const dbConfigForm = document.getElementById('dbConfigForm');
+const dbClearBtn = document.getElementById('dbClearBtn');
+const dbStatusDot = document.getElementById('dbStatusDot');
+const dbStatusText = document.getElementById('dbStatusText');
+const dbProjectUrlInput = document.getElementById('dbProjectUrl');
+const dbAnonKeyInput = document.getElementById('dbAnonKey');
+
+// Toast
 const toastNotification = document.getElementById('toastNotification');
 const toastMessage = document.getElementById('toastMessage');
 
 // Formatação BRL
 function formatCurrency(value) {
-  return (value || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+  return (parseFloat(value) || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
 }
 
-// Máscaras de CPF e Telefone
+// Máscaras de Entrada
 function maskCPF(value) {
   return value
     .replace(/\D/g, '')
@@ -202,7 +215,6 @@ function maskPhone(value) {
     .replace(/(-\d{4})\d+?$/, '$1');
 }
 
-// Aplicar máscaras nos inputs
 ['regCpf', 'custCpf'].forEach(id => {
   const el = document.getElementById(id);
   if (el) el.addEventListener('input', (e) => e.target.value = maskCPF(e.target.value));
@@ -214,25 +226,28 @@ function maskPhone(value) {
 });
 
 /* ==========================================================================
-   PERSISTÊNCIA & CARREGAMENTO (LocalStorage)
+   SERVIÇO DE BANCO DE DADOS (Supabase + LocalStorage Fallback)
    ========================================================================== */
-function loadData() {
-  // Pedidos
-  const savedOrders = localStorage.getItem('ru_cuccina_orders');
-  if (savedOrders) {
-    try { orders = JSON.parse(savedOrders); } catch (e) { orders = INITIAL_DEMO_ORDERS; }
+function isSupabaseConnected() {
+  return supabaseClient !== null;
+}
+
+function updateDbStatusUI() {
+  if (isSupabaseConnected()) {
+    if (dbStatusDot) dbStatusDot.classList.add('connected');
+    if (dbStatusText) dbStatusText.textContent = 'Nuvem Conectada';
   } else {
-    orders = INITIAL_DEMO_ORDERS;
-    saveOrders();
+    if (dbStatusDot) dbStatusDot.classList.remove('connected');
+    if (dbStatusText) dbStatusText.textContent = 'Banco Local';
   }
+}
 
-  // Usuários Cadastrados
-  const savedUsers = localStorage.getItem('ru_cuccina_users');
-  if (savedUsers) {
-    try { registeredUsers = JSON.parse(savedUsers); } catch (e) { registeredUsers = []; }
-  }
+// Inicializar Dados & Sincronização
+async function initDatabaseAndLoadData() {
+  initSupabase();
+  updateDbStatusUI();
 
-  // Sessão do Usuário
+  // 1. Carregar Sessão Local
   const savedSession = localStorage.getItem('ru_cuccina_session');
   if (savedSession) {
     try {
@@ -242,40 +257,147 @@ function loadData() {
       currentUser = null;
     }
   }
+
+  // 2. Carregar Usuários Locais (Cache)
+  const savedUsers = localStorage.getItem('ru_cuccina_users');
+  if (savedUsers) {
+    try { registeredUsers = JSON.parse(savedUsers); } catch (e) { registeredUsers = []; }
+  }
+
+  // 3. Carregar Pedidos
+  await fetchAllOrders();
+
+  // 4. Configurar Realtime se Supabase estiver ativo
+  if (isSupabaseConnected()) {
+    setupRealtimeSubscription();
+  }
 }
 
-function saveOrders() {
-  localStorage.setItem('ru_cuccina_orders', JSON.stringify(orders));
+// Carregar Pedidos (do Supabase ou Local)
+async function fetchAllOrders() {
+  if (isSupabaseConnected()) {
+    try {
+      const { data, error } = await supabaseClient
+        .from('orders')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (!error && data) {
+        orders = data.map(normalizeDbOrder);
+        updateAdminMetrics();
+        renderAdminOrders();
+        return;
+      }
+    } catch (e) {
+      console.warn('Falha ao buscar pedidos do Supabase, usando local:', e);
+    }
+  }
+
+  // Fallback Local
+  const saved = localStorage.getItem('ru_cuccina_orders');
+  if (saved) {
+    try { orders = JSON.parse(saved); } catch (e) { orders = INITIAL_DEMO_ORDERS; }
+  } else {
+    orders = INITIAL_DEMO_ORDERS;
+    saveLocalOrders();
+  }
   updateAdminMetrics();
   renderAdminOrders();
 }
 
-function saveUsers() {
-  localStorage.setItem('ru_cuccina_users', JSON.stringify(registeredUsers));
+function normalizeDbOrder(dbRow) {
+  const addressParts = (dbRow.customer_address || '').split(' - ');
+  const streetAndNeigh = addressParts[0] || '';
+  const complement = addressParts[1] || '';
+  
+  return {
+    id: dbRow.id,
+    created_at: dbRow.created_at,
+    timeFormatted: new Date(dbRow.created_at).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
+    customer: {
+      name: dbRow.customer_name,
+      cpf: dbRow.customer_cpf,
+      phone: dbRow.customer_phone,
+      street: streetAndNeigh,
+      neighborhood: '',
+      complement: complement
+    },
+    payment: {
+      method: dbRow.payment_method,
+      change: dbRow.payment_change
+    },
+    notes: dbRow.notes,
+    items: Array.isArray(dbRow.items) ? dbRow.items : JSON.parse(dbRow.items || '[]'),
+    total: parseFloat(dbRow.total) || 0,
+    isPaid: !!dbRow.is_paid,
+    isDispatched: !!dbRow.is_dispatched,
+    isCompleted: !!dbRow.is_completed
+  };
 }
 
-function saveSession(user) {
-  currentUser = user;
-  if (user) {
-    localStorage.setItem('ru_cuccina_session', JSON.stringify(user));
-  } else {
-    localStorage.removeItem('ru_cuccina_session');
+function saveLocalOrders() {
+  localStorage.setItem('ru_cuccina_orders', JSON.stringify(orders));
+}
+
+// Assinatura em Tempo Real (Realtime Supabase)
+function setupRealtimeSubscription() {
+  if (!supabaseClient) return;
+
+  try {
+    supabaseClient
+      .channel('public:orders')
+      .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (payload) => {
+        console.log('🔄 Atualização de pedido em tempo real:', payload);
+        fetchAllOrders();
+        showToast('Atualização de pedidos recebida em tempo real!');
+      })
+      .subscribe();
+  } catch (e) {
+    console.warn('Erro ao configurar realtime:', e);
   }
-  updateAuthUI();
 }
 
-// Sincronização entre abas
-window.addEventListener('storage', (e) => {
-  if (e.key === 'ru_cuccina_orders') {
-    loadData();
-    updateAdminMetrics();
-    renderAdminOrders();
+// Configuração do Banco de Dados via Modal
+adminOpenDbConfigBtn.addEventListener('click', () => {
+  dbProjectUrlInput.value = SUPABASE_CONFIG.url || '';
+  dbAnonKeyInput.value = SUPABASE_CONFIG.anonKey || '';
+  dbConfigModalOverlay.classList.add('open');
+});
+
+dbConfigCloseBtn.addEventListener('click', () => {
+  dbConfigModalOverlay.classList.remove('open');
+});
+
+dbConfigForm.addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const url = dbProjectUrlInput.value.trim();
+  const key = dbAnonKeyInput.value.trim();
+
+  updateSupabaseCredentials(url, key);
+  updateDbStatusUI();
+
+  if (isSupabaseConnected()) {
+    showToast('Conectando ao Supabase...');
+    await fetchAllOrders();
+    setupRealtimeSubscription();
+    dbConfigModalOverlay.classList.remove('open');
+    showToast('Banco Supabase Conectado com Sucesso!');
+  } else {
+    alert('Não foi possível inicializar o cliente Supabase. Verifique a URL e a Anon Key informadas.');
   }
 });
 
+dbClearBtn.addEventListener('click', () => {
+  updateSupabaseCredentials('', '');
+  updateDbStatusUI();
+  dbProjectUrlInput.value = '';
+  dbAnonKeyInput.value = '';
+  showToast('Configurações do banco limpas. Usando armazenamento local.');
+});
+
 /* ==========================================================================
-   AUTENTICAÇÃO: LOGIN & CADASTRO
-   ========================================================================== */
+   AUTENTICAÇÃO & VERIFICAÇÃO DE USUÁRIOS NO BANCO
+   ========================================================================= */
 function updateAuthUI() {
   if (currentUser) {
     if (currentUser.role === 'admin') {
@@ -289,7 +411,6 @@ function updateAuthUI() {
   }
 }
 
-// Abrir Modal de Login/Cadastro
 authModalOpenBtn.addEventListener('click', () => {
   if (currentUser && currentUser.role === 'admin') {
     openAdminDashboard();
@@ -318,7 +439,6 @@ authCloseBtn.addEventListener('click', () => {
   authModalOverlay.classList.remove('open');
 });
 
-// Alternar abas do modal
 authTabLogin.addEventListener('click', () => {
   authTabLogin.classList.add('active');
   authTabRegister.classList.remove('active');
@@ -333,14 +453,24 @@ authTabRegister.addEventListener('click', () => {
   loginForm.style.display = 'none';
 });
 
-// Submeter Login
-loginForm.addEventListener('submit', (e) => {
+function saveSession(user) {
+  currentUser = user;
+  if (user) {
+    localStorage.setItem('ru_cuccina_session', JSON.stringify(user));
+  } else {
+    localStorage.removeItem('ru_cuccina_session');
+  }
+  updateAuthUI();
+}
+
+// 1. Login com Verificação no Banco / Admin
+loginForm.addEventListener('submit', async (e) => {
   e.preventDefault();
-  const ident = document.getElementById('loginIdentifier').value.trim().toLowerCase();
+  const ident = document.getElementById('loginIdentifier').value.trim();
   const pass = document.getElementById('loginPassword').value.trim();
 
-  // 1. Verificação de Acesso Admin
-  if ((ident === 'admin' || ident === 'admin@rucuccina.com') && pass === 'admin123') {
+  // A. Verificação de Acesso Admin Mestre
+  if ((ident.toLowerCase() === 'admin' || ident.toLowerCase() === 'admin@rucuccina.com') && pass === 'admin123') {
     saveSession({ role: 'admin', name: 'Administrador' });
     authModalOverlay.classList.remove('open');
     loginForm.reset();
@@ -349,23 +479,47 @@ loginForm.addEventListener('submit', (e) => {
     return;
   }
 
-  // 2. Verificação de Cliente Cadastrado
-  const user = registeredUsers.find(u => 
-    (u.cpf === ident || u.phone === ident || (u.email && u.email.toLowerCase() === ident)) && u.password === pass
+  // B. Verificação no Supabase (se conectado)
+  if (isSupabaseConnected()) {
+    try {
+      const cleanIdent = ident.replace(/\D/g, '');
+      const { data, error } = await supabaseClient
+        .from('users')
+        .select('*')
+        .or(`cpf.eq."${ident}",cpf.eq."${cleanIdent}",phone.eq."${ident}",phone.eq."${cleanIdent}"`)
+        .eq('password', pass)
+        .limit(1);
+
+      if (!error && data && data.length > 0) {
+        const user = data[0];
+        saveSession({ ...user, role: 'customer' });
+        authModalOverlay.classList.remove('open');
+        loginForm.reset();
+        showToast(`Bem-vindo(a) de volta, ${user.name.split(' ')[0]}! (Nuvem)`);
+        return;
+      }
+    } catch (err) {
+      console.warn('Erro ao consultar login no Supabase:', err);
+    }
+  }
+
+  // C. Verificação no Banco Local
+  const localUser = registeredUsers.find(u => 
+    (u.cpf === ident || u.phone === ident || u.cpf.replace(/\D/g, '') === ident.replace(/\D/g, '')) && u.password === pass
   );
 
-  if (user) {
-    saveSession({ ...user, role: 'customer' });
+  if (localUser) {
+    saveSession({ ...localUser, role: 'customer' });
     authModalOverlay.classList.remove('open');
     loginForm.reset();
-    showToast(`Bem-vindo(a) de volta, ${user.name.split(' ')[0]}!`);
+    showToast(`Bem-vindo(a) de volta, ${localUser.name.split(' ')[0]}!`);
   } else {
-    alert('Credenciais incorretas.\n\nPara acesso Admin: use admin / admin123\nPara cliente: cadastre-se na aba "Criar Conta".');
+    alert('Credenciais não encontradas no banco de dados.\n\n• Para Administrador: use admin / admin123\n• Para Cliente: cadastre-se na aba "Criar Conta".');
   }
 });
 
-// Submeter Cadastro de Cliente
-registerForm.addEventListener('submit', (e) => {
+// 2. Cadastro com Salvamento no Banco e Verificação de Duplicidade
+registerForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   const name = document.getElementById('regName').value.trim();
   const cpf = document.getElementById('regCpf').value.trim();
@@ -375,29 +529,65 @@ registerForm.addEventListener('submit', (e) => {
   const complement = document.getElementById('regComplement').value.trim();
   const password = document.getElementById('regPassword').value.trim();
 
+  // A. Verificar no Supabase se CPF já existe
+  if (isSupabaseConnected()) {
+    try {
+      const { data } = await supabaseClient
+        .from('users')
+        .select('id')
+        .eq('cpf', cpf);
+
+      if (data && data.length > 0) {
+        alert('Este CPF já está cadastrado no banco de dados. Faça login na aba "Entrar".');
+        return;
+      }
+    } catch (err) {
+      console.warn('Erro ao checar duplicidade no Supabase:', err);
+    }
+  }
+
+  // B. Verificar no Banco Local
   if (registeredUsers.some(u => u.cpf === cpf)) {
     alert('Este CPF já está cadastrado. Faça login na aba "Entrar".');
     return;
   }
 
   const newUser = {
-    id: 'user_' + Date.now(),
-    name,
     cpf,
+    name,
     phone,
     street,
     neighborhood,
     complement,
-    password
+    password,
+    role: 'customer'
   };
 
+  // C. Salvar no Supabase
+  if (isSupabaseConnected()) {
+    try {
+      const { error } = await supabaseClient
+        .from('users')
+        .insert([newUser]);
+
+      if (error) {
+        console.error('Erro ao salvar no Supabase:', error);
+      } else {
+        console.log('✅ Usuário registrado no Supabase!');
+      }
+    } catch (err) {
+      console.warn('Falha na inserção remota:', err);
+    }
+  }
+
+  // D. Salvar Localmente
   registeredUsers.push(newUser);
-  saveUsers();
-  saveSession({ ...newUser, role: 'customer' });
+  localStorage.setItem('ru_cuccina_users', JSON.stringify(registeredUsers));
+  saveSession(newUser);
 
   authModalOverlay.classList.remove('open');
   registerForm.reset();
-  showToast(`Cadastro realizado com sucesso! Olá, ${name.split(' ')[0]}.`);
+  showToast(`Cadastro salvo com sucesso! Olá, ${name.split(' ')[0]}.`);
 });
 
 /* ==========================================================================
@@ -408,6 +598,7 @@ function openAdminDashboard() {
   adminDashboardView.style.display = 'flex';
   renderAdminOrders();
   updateAdminMetrics();
+  updateDbStatusUI();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -425,11 +616,10 @@ adminLogoutBtn.addEventListener('click', () => {
   showToast('Você saiu do painel administrativo.');
 });
 
-adminRefreshBtn.addEventListener('click', () => {
-  loadData();
-  renderAdminOrders();
-  updateAdminMetrics();
-  showToast('Pedidos atualizados!');
+adminRefreshBtn.addEventListener('click', async () => {
+  showToast('Atualizando lista de pedidos...');
+  await fetchAllOrders();
+  showToast('Pedidos sincronizados!');
 });
 
 function updateAdminMetrics() {
@@ -444,7 +634,6 @@ function updateAdminMetrics() {
   metricDispatchedOrders.textContent = dispatched;
 }
 
-// Filtros do Painel
 document.querySelectorAll('.admin-filter-btn').forEach(btn => {
   btn.addEventListener('click', () => {
     document.querySelectorAll('.admin-filter-btn').forEach(b => b.classList.remove('active'));
@@ -481,7 +670,6 @@ function renderAdminOrders() {
     return `
       <div class="order-card ${isDispatched ? 'status-dispatched' : ''}" data-id="${order.id}">
         
-        <!-- Top Row do Pedido -->
         <div class="order-card-top">
           <div class="order-id-wrap">
             <span class="order-num">#${order.id}</span>
@@ -504,24 +692,22 @@ function renderAdminOrders() {
           </div>
         </div>
 
-        <!-- Dados do Cliente e Endereço -->
         <div class="order-customer-info">
           <div class="order-cust-name">
             👤 <strong>${order.customer.name}</strong> ${order.customer.cpf ? `<small style="font-weight:400;color:#666;">(CPF: ${order.customer.cpf})</small>` : ''}
           </div>
           <div>
-            <a href="https://wa.me/55${order.customer.phone.replace(/\D/g, '')}" target="_blank" class="order-cust-phone">
+            <a href="https://wa.me/55${(order.customer.phone || '').replace(/\D/g, '')}" target="_blank" class="order-cust-phone">
               📱 WhatsApp: ${order.customer.phone}
             </a>
           </div>
           <div class="order-address-box">
-            📍 <strong>Endereço:</strong> ${order.customer.street}, ${order.customer.neighborhood} 
+            📍 <strong>Endereço:</strong> ${order.customer.street} ${order.customer.neighborhood ? ', ' + order.customer.neighborhood : ''} 
             ${order.customer.complement ? ' - ' + order.customer.complement : ''}
           </div>
           ${order.notes ? `<div style="font-size: 11.5px; color: #b45309; margin-top: 2px;">📝 Obs: ${order.notes}</div>` : ''}
         </div>
 
-        <!-- Itens do Pedido -->
         <div class="order-items-list">
           ${order.items.map(item => `
             <div class="order-item-row">
@@ -531,20 +717,16 @@ function renderAdminOrders() {
           `).join('')}
         </div>
 
-        <!-- Total e Forma de Pagamento -->
         <div class="order-total-row">
           <span>Forma: <strong>${order.payment.method}</strong></span>
           <span>Total: <strong>${formatCurrency(order.total)}</strong></span>
         </div>
 
-        <!-- Controles de Ação da Gerente -->
         <div class="order-actions-bar">
-          <!-- Marcar / Desmarcar como Pago -->
           <button class="order-action-btn btn-toggle-paid ${isPaid ? 'is-paid' : ''}" onclick="togglePaidStatus('${order.id}')">
             ${isPaid ? '✓ Pago 🟢' : 'Marcar como Pago'}
           </button>
 
-          <!-- Marcar / Desmarcar como Saiu para Entrega (FICA EM VERMELHO) -->
           <button class="order-action-btn btn-toggle-dispatch ${isDispatched ? 'is-dispatched' : ''}" onclick="toggleDispatchStatus('${order.id}')">
             ${isDispatched ? '🛵 Em Rota 🔴' : '🛵 Saiu p/ Entrega'}
           </button>
@@ -564,11 +746,27 @@ function renderAdminOrders() {
   }).join('');
 }
 
+async function updateOrderInDatabase(orderId, updates) {
+  if (isSupabaseConnected()) {
+    try {
+      await supabaseClient
+        .from('orders')
+        .update(updates)
+        .eq('id', orderId);
+    } catch (e) {
+      console.warn('Erro ao atualizar no Supabase:', e);
+    }
+  }
+  saveLocalOrders();
+  updateAdminMetrics();
+  renderAdminOrders();
+}
+
 function togglePaidStatus(orderId) {
   const order = orders.find(o => o.id === orderId);
   if (!order) return;
   order.isPaid = !order.isPaid;
-  saveOrders();
+  updateOrderInDatabase(orderId, { is_paid: order.isPaid });
   showToast(`Pedido #${order.id}: ${order.isPaid ? 'Marcado como Pago 🟢' : 'Marcado como Pagamento Pendente'}`);
 }
 
@@ -577,7 +775,7 @@ function toggleDispatchStatus(orderId) {
   if (!order) return;
   order.isDispatched = !order.isDispatched;
   if (order.isDispatched) order.isCompleted = false;
-  saveOrders();
+  updateOrderInDatabase(orderId, { is_dispatched: order.isDispatched, is_completed: order.isCompleted });
   showToast(`Pedido #${order.id}: ${order.isDispatched ? 'Saiu para Entrega! 🔴' : 'Retornado para preparo'}`);
 }
 
@@ -586,14 +784,23 @@ function toggleCompleteStatus(orderId) {
   if (!order) return;
   order.isCompleted = !order.isCompleted;
   if (order.isCompleted) order.isDispatched = false;
-  saveOrders();
+  updateOrderInDatabase(orderId, { is_completed: order.isCompleted, is_dispatched: order.isDispatched });
   showToast(`Pedido #${order.id}: ${order.isCompleted ? 'Concluído com sucesso! ✓' : 'Reaberto'}`);
 }
 
-function deleteOrder(orderId) {
+async function deleteOrder(orderId) {
   if (confirm(`Tem certeza que deseja excluir o Pedido #${orderId}?`)) {
+    if (isSupabaseConnected()) {
+      try {
+        await supabaseClient.from('orders').delete().eq('id', orderId);
+      } catch (e) {
+        console.warn('Erro ao excluir no Supabase:', e);
+      }
+    }
     orders = orders.filter(o => o.id !== orderId);
-    saveOrders();
+    saveLocalOrders();
+    updateAdminMetrics();
+    renderAdminOrders();
     showToast(`Pedido #${orderId} excluído.`);
   }
 }
@@ -769,7 +976,6 @@ checkoutBtn.addEventListener('click', () => {
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
   modalTotalAmount.textContent = formatCurrency(subtotal);
 
-  // Auto-preenchimento caso o cliente esteja logado
   if (currentUser && currentUser.role === 'customer') {
     document.getElementById('custName').value = currentUser.name || '';
     document.getElementById('custCpf').value = currentUser.cpf || '';
@@ -791,7 +997,7 @@ paymentMethodSelect.addEventListener('change', (e) => {
   changeGroup.style.display = e.target.value === 'Dinheiro' ? 'flex' : 'none';
 });
 
-deliveryForm.addEventListener('submit', (e) => {
+deliveryForm.addEventListener('submit', async (e) => {
   e.preventDefault();
 
   const name = document.getElementById('custName').value.trim();
@@ -806,10 +1012,11 @@ deliveryForm.addEventListener('submit', (e) => {
 
   const subtotal = cart.reduce((sum, item) => sum + (item.price * item.qty), 0);
   const newId = (1000 + orders.length + 1).toString();
+  const fullAddress = `${street}, ${neighborhood}${complement ? ' - ' + complement : ''}`;
 
-  const newOrder = {
+  const newOrderObj = {
     id: newId,
-    createdAt: new Date().toISOString(),
+    created_at: new Date().toISOString(),
     timeFormatted: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
     customer: {
       name,
@@ -831,16 +1038,41 @@ deliveryForm.addEventListener('submit', (e) => {
     isCompleted: false
   };
 
-  orders.unshift(newOrder);
-  saveOrders();
-  lastCreatedOrder = newOrder;
+  // Salvar no Supabase
+  if (isSupabaseConnected()) {
+    try {
+      await supabaseClient.from('orders').insert([{
+        id: newId,
+        customer_name: name,
+        customer_cpf: cpf,
+        customer_phone: phone,
+        customer_address: fullAddress,
+        payment_method: paymentMethod,
+        payment_change: change,
+        notes: notes,
+        items: cart,
+        total: subtotal,
+        is_paid: false,
+        is_dispatched: false,
+        is_completed: false
+      }]);
+      console.log('✅ Pedido salvo no Supabase!');
+    } catch (err) {
+      console.warn('Falha ao inserir pedido no Supabase:', err);
+    }
+  }
+
+  // Salvar Local
+  orders.unshift(newOrderObj);
+  saveLocalOrders();
+  lastCreatedOrder = newOrderObj;
 
   deliveryForm.reset();
   cart = [];
   updateCartUI();
 
   checkoutModalOverlay.classList.remove('open');
-  showSuccessModal(newOrder);
+  showSuccessModal(newOrderObj);
 });
 
 function showSuccessModal(order) {
@@ -848,7 +1080,7 @@ function showSuccessModal(order) {
     <div style="margin-bottom: 8px;"><strong>Pedido #${order.id}</strong> • ${order.timeFormatted}</div>
     <div style="margin-bottom: 6px;">👤 <strong>${order.customer.name}</strong> ${order.customer.cpf ? `<br><small style="color:#666;">CPF: ${order.customer.cpf}</small>` : ''}</div>
     <div style="margin-bottom: 6px;">📱 ${order.customer.phone}</div>
-    <div style="margin-bottom: 6px;">📍 ${order.customer.street}, ${order.customer.neighborhood} ${order.customer.complement ? '- ' + order.customer.complement : ''}</div>
+    <div style="margin-bottom: 6px;">📍 ${order.customer.street} ${order.customer.neighborhood ? ', ' + order.customer.neighborhood : ''} ${order.customer.complement ? '- ' + order.customer.complement : ''}</div>
     <div style="margin-bottom: 8px;">💳 Pagamento: <strong>${order.payment.method}</strong> ${order.payment.change ? '(' + order.payment.change + ')' : ''}</div>
     <hr style="border: 0; border-top: 1px dashed #ded8cb; margin: 8px 0;">
     <div style="margin-bottom: 6px;">
@@ -869,7 +1101,7 @@ sendWhatsAppBtn.addEventListener('click', () => {
     msg += `📄 *CPF:* ${lastCreatedOrder.customer.cpf}%0A`;
   }
   msg += `📞 *WhatsApp:* ${lastCreatedOrder.customer.phone}%0A`;
-  msg += `📍 *Endereço:* ${lastCreatedOrder.customer.street}, ${lastCreatedOrder.customer.neighborhood} ${lastCreatedOrder.customer.complement ? '- ' + lastCreatedOrder.customer.complement : ''}%0A%0A`;
+  msg += `📍 *Endereço:* ${lastCreatedOrder.customer.street} ${lastCreatedOrder.customer.neighborhood ? ', ' + lastCreatedOrder.customer.neighborhood : ''} ${lastCreatedOrder.customer.complement ? '- ' + lastCreatedOrder.customer.complement : ''}%0A%0A`;
   msg += `🍝 *Itens do Pedido:*%0A`;
   lastCreatedOrder.items.forEach(it => {
     msg += `• ${it.qty}x ${it.title} (${formatCurrency(it.price * it.qty)})%0A`;
@@ -905,8 +1137,7 @@ function showToast(message) {
    INICIALIZAÇÃO
    ========================================================================== */
 document.addEventListener('DOMContentLoaded', () => {
-  loadData();
+  initDatabaseAndLoadData();
   renderProducts();
   updateCartUI();
-  updateAdminMetrics();
 });
