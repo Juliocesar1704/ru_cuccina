@@ -15,7 +15,32 @@
 </head>
 <body>
   <div class="app-wrapper">
-    <main class="mobile-container">
+    
+    <!-- Top System Switcher Bar (Cardápio vs Gestão de Pedidos) -->
+    <div class="system-switcher-bar">
+      <button class="switcher-tab active" id="tabMenuBtn">
+        <svg class="switcher-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M18 8h1a4 4 0 0 1 0 8h-1"></path>
+          <path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4V8z"></path>
+          <line x1="6" y1="1" x2="6" y2="4"></line>
+          <line x1="10" y1="1" x2="10" y2="4"></line>
+          <line x1="14" y1="1" x2="14" y2="4"></line>
+        </svg>
+        <span>Cardápio</span>
+      </button>
+      <button class="switcher-tab" id="tabAdminBtn">
+        <svg class="switcher-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="2" y="3" width="20" height="14" rx="2" ry="2"></rect>
+          <line x1="8" y1="21" x2="16" y2="21"></line>
+          <line x1="12" y1="17" x2="12" y2="21"></line>
+        </svg>
+        <span>Painel de Pedidos</span>
+        <span class="admin-orders-counter" id="adminPendingCounter" style="display: none;">0</span>
+      </button>
+    </div>
+
+    <!-- VIEW 1: CLIENT MENU & STOREFRONT -->
+    <main class="mobile-container view-panel active" id="clientMenuView">
       
       <!-- Top Header Section -->
       <header class="header-section">
@@ -116,10 +141,10 @@
 
         <!-- Product Feed Container -->
         <div class="products-list" id="productsList">
-          <!-- Dynamically populated by JS or fallback HTML -->
+          <!-- Dynamically populated by JS -->
         </div>
 
-        <!-- Empty State (When search/filter has no results) -->
+        <!-- Empty State -->
         <div class="empty-state" id="emptyState" style="display: none;">
           <span class="empty-icon">🔍</span>
           <p class="empty-text">Nenhum item encontrado.</p>
@@ -140,6 +165,70 @@
         </a>
         <p class="footer-copy">RU CUCCINA • MASSAS &amp; RISOTOS</p>
       </footer>
+
+    </main>
+
+    <!-- VIEW 2: ADMIN ORDERS MANAGEMENT DASHBOARD (PAINEL DE PEDIDOS DA PROPRIETÁRIA) -->
+    <main class="mobile-container view-panel" id="adminOrdersView" style="display: none;">
+      
+      <!-- Admin Header -->
+      <header class="admin-header">
+        <div class="admin-header-top">
+          <div class="admin-title-wrap">
+            <h1 class="admin-title">Gestão de Pedidos</h1>
+            <p class="admin-subtitle">RU CUCCINA Delivery</p>
+          </div>
+          <button class="refresh-orders-btn" id="refreshOrdersBtn" title="Atualizar Pedidos">
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M23 4v6h-6"></path>
+              <path d="M1 20v-6h6"></path>
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Metrics Cards -->
+        <div class="admin-metrics-grid">
+          <div class="metric-card">
+            <span class="metric-label">Total Pedidos</span>
+            <span class="metric-val" id="metricTotalOrders">0</span>
+          </div>
+          <div class="metric-card metric-pending">
+            <span class="metric-label">Pendentes</span>
+            <span class="metric-val" id="metricPendingOrders">0</span>
+          </div>
+          <div class="metric-card metric-paid">
+            <span class="metric-label">Pagos 🟢</span>
+            <span class="metric-val" id="metricPaidOrders">0</span>
+          </div>
+          <div class="metric-card metric-dispatched">
+            <span class="metric-label">Saíram p/ Entrega 🔴</span>
+            <span class="metric-val" id="metricDispatchedOrders">0</span>
+          </div>
+        </div>
+
+        <!-- Order Filters Bar -->
+        <div class="admin-filters-bar">
+          <button class="admin-filter-btn active" data-status-filter="all">Todos</button>
+          <button class="admin-filter-btn" data-status-filter="pending">Pendentes</button>
+          <button class="admin-filter-btn" data-status-filter="paid">Pagos 🟢</button>
+          <button class="admin-filter-btn filter-dispatched-btn" data-status-filter="dispatched">Saíram p/ Entrega 🔴</button>
+          <button class="admin-filter-btn" data-status-filter="completed">Concluídos</button>
+        </div>
+      </header>
+
+      <!-- Admin Orders List Container -->
+      <section class="admin-orders-content">
+        <div class="admin-orders-list" id="adminOrdersList">
+          <!-- Dynamically populated by JS -->
+        </div>
+
+        <div class="admin-empty-orders" id="adminEmptyOrders" style="display: none;">
+          <span class="empty-icon">🛵</span>
+          <h3>Nenhum pedido encontrado</h3>
+          <p>Quando os clientes fizerem pedidos pelo cardápio, eles aparecerão aqui em tempo real.</p>
+        </div>
+      </section>
 
     </main>
 
@@ -169,7 +258,7 @@
         </div>
         <div class="cart-actions">
           <button class="checkout-btn" id="checkoutBtn">
-            <span>Finalizar Pedido</span>
+            <span>Avançar para Entrega</span>
             <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
               <line x1="5" y1="12" x2="19" y2="12"></line>
               <polyline points="12 5 19 12 12 19"></polyline>
@@ -178,6 +267,101 @@
         </div>
       </div>
     </aside>
+
+    <!-- Checkout Modal (Customer Delivery Details) -->
+    <div class="modal-overlay" id="checkoutModalOverlay">
+      <div class="checkout-modal" id="checkoutModal">
+        <div class="modal-header">
+          <div class="modal-title-wrap">
+            <span class="modal-badge">🛵 Delivery</span>
+            <h2>Dados para Entrega</h2>
+          </div>
+          <button class="modal-close-btn" id="checkoutCloseBtn">&times;</button>
+        </div>
+
+        <form id="deliveryForm" class="checkout-form">
+          <div class="form-group">
+            <label for="custName">Seu Nome *</label>
+            <input type="text" id="custName" placeholder="Ex: Maria Silva" required>
+          </div>
+
+          <div class="form-group">
+            <label for="custPhone">WhatsApp / Telefone *</label>
+            <input type="tel" id="custPhone" placeholder="(00) 00000-0000" required>
+          </div>
+
+          <div class="form-group">
+            <label for="custStreet">Rua e Número *</label>
+            <input type="text" id="custStreet" placeholder="Ex: Av. Paulista, 1000" required>
+          </div>
+
+          <div class="form-row">
+            <div class="form-group">
+              <label for="custNeighborhood">Bairro *</label>
+              <input type="text" id="custNeighborhood" placeholder="Ex: Centro" required>
+            </div>
+            <div class="form-group">
+              <label for="custComplement">Compl. / Apto</label>
+              <input type="text" id="custComplement" placeholder="Ex: Apto 42">
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label for="paymentMethod">Forma de Pagamento *</label>
+            <select id="paymentMethod" required>
+              <option value="PIX">Pix (Chave informada no pedido)</option>
+              <option value="Cartão de Crédito">Cartão de Crédito (na maquininha)</option>
+              <option value="Cartão de Débito">Cartão de Débito (na maquininha)</option>
+              <option value="Dinheiro">Dinheiro</option>
+            </select>
+          </div>
+
+          <div class="form-group" id="changeGroup" style="display: none;">
+            <label for="custChange">Precisa de troco para quanto?</label>
+            <input type="text" id="custChange" placeholder="Ex: Troco para R$ 50,00">
+          </div>
+
+          <div class="form-group">
+            <label for="orderNotes">Observações do Pedido</label>
+            <input type="text" id="orderNotes" placeholder="Ex: Sem queijo ralado, talher extra...">
+          </div>
+
+          <div class="checkout-summary-box">
+            <div class="summary-line">
+              <span>Total do Pedido</span>
+              <strong id="modalTotalAmount">R$ 0,00</strong>
+            </div>
+          </div>
+
+          <button type="submit" class="submit-order-btn" id="confirmOrderBtn">
+            <span>Confirmar Pedido</span>
+            <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="20 6 9 17 4 12"></polyline>
+            </svg>
+          </button>
+        </form>
+      </div>
+    </div>
+
+    <!-- Order Success Modal -->
+    <div class="modal-overlay" id="successModalOverlay">
+      <div class="success-modal">
+        <div class="success-icon-wrap">✓</div>
+        <h2 class="success-title">Pedido Recebido com Sucesso!</h2>
+        <p class="success-desc">Seu pedido foi registrado no sistema da <strong>RU CUCCINA</strong>.</p>
+        
+        <div class="success-order-card" id="successOrderDetails">
+          <!-- Injected by JS -->
+        </div>
+
+        <div class="success-actions">
+          <button class="whatsapp-send-btn" id="sendWhatsAppBtn">
+            <span>Enviar Cópia no WhatsApp</span>
+          </button>
+          <button class="back-menu-btn" id="successBackBtn">Voltar ao Cardápio</button>
+        </div>
+      </div>
+    </div>
 
     <!-- Toast Notification -->
     <div class="toast" id="toastNotification">
