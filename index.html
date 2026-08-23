@@ -313,20 +313,20 @@
         <!-- Tab 1: Form de Login (Admin e Clientes) -->
         <form id="loginForm" class="auth-form">
           <div class="form-group">
-            <label for="loginIdentifier">CPF, E-mail ou Usuário *</label>
-            <input type="text" id="loginIdentifier" placeholder="Seu CPF, e-mail ou 'admin'" required autocomplete="username">
+            <label for="loginIdentifier">CPF, Telefone ou Usuário *</label>
+            <input type="text" id="loginIdentifier" placeholder="Seu CPF, WhatsApp ou admin" required autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false">
           </div>
 
           <div class="form-group">
             <label for="loginPassword">Senha *</label>
-            <input type="password" id="loginPassword" placeholder="Sua senha" required autocomplete="current-password">
+            <input type="password" id="loginPassword" placeholder="Sua senha" required autocomplete="current-password" autocapitalize="none" autocorrect="off" spellcheck="false">
           </div>
 
-          <div class="admin-hint-box">
-            💡 <strong>Acesso Admin:</strong> Usuário <code>admin</code> | Senha <code>admin123</code>
+          <div class="admin-hint-box" style="cursor: pointer;" id="quickAdminFillBtn" title="Clique para preencher os dados de Gerência automaticamente">
+            💡 <strong>Acesso Gerência:</strong> <code>admin</code> / <code>admin123</code> <span style="font-size:10px;text-decoration:underline;float:right;color:#0b1f14;">(preencher)</span>
           </div>
 
-          <button type="submit" class="auth-submit-btn">
+          <button type="submit" class="auth-submit-btn" id="loginSubmitBtn">
             <span>Entrar na Conta</span>
           </button>
         </form>

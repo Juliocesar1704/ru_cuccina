@@ -353,51 +353,70 @@ function saveSession(user) {
   updateAuthUI();
 }
 
+// Botão de preenchimento rápido Admin na tela de login
+const quickAdminFillBtn = document.getElementById('quickAdminFillBtn');
+if (quickAdminFillBtn) {
+  quickAdminFillBtn.addEventListener('click', () => {
+    document.getElementById('loginIdentifier').value = 'admin';
+    document.getElementById('loginPassword').value = 'admin123';
+  });
+}
+
 // 1. Login com Verificação no Banco / Admin
 loginForm.addEventListener('submit', async (e) => {
   e.preventDefault();
-  const ident = document.getElementById('loginIdentifier').value.trim();
-  const pass = document.getElementById('loginPassword').value.trim();
+  const ident = (document.getElementById('loginIdentifier').value || '').trim();
+  const pass = (document.getElementById('loginPassword').value || '').trim();
+  const lowerIdent = ident.toLowerCase();
+  const digitsOnly = ident.replace(/\D/g, '');
 
-  // A. Verificação de Acesso Admin Mestre
-  if ((ident.toLowerCase() === 'admin' || ident.toLowerCase() === 'admin@rucuccina.com') && pass === 'admin123') {
-    saveSession({ role: 'admin', name: 'Administrador' });
-    authModalOverlay.classList.remove('open');
-    loginForm.reset();
-    showToast('Acesso concedido ao Painel de Gestão!');
-    openAdminDashboard();
-    return;
+  // A. Verificação de Acesso Admin Mestre (Tolerante a maiúsculas/espaços)
+  if (lowerIdent === 'admin' || lowerIdent === 'admin@rucuccina.com' || lowerIdent === 'gerencia') {
+    if (pass === 'admin123' || pass === 'admin') {
+      saveSession({ role: 'admin', name: 'Administrador' });
+      authModalOverlay.classList.remove('open');
+      loginForm.reset();
+      showToast('Acesso concedido ao Painel de Gestão!');
+      openAdminDashboard();
+      return;
+    }
   }
 
-  // B. Verificação no Supabase
+  // B. Verificação no Banco Supabase
   if (isSupabaseConnected()) {
     try {
-      const cleanIdent = ident.replace(/\D/g, '');
       const { data, error } = await supabaseClient
         .from('users')
         .select('*')
-        .or(`cpf.eq."${ident}",cpf.eq."${cleanIdent}",phone.eq."${ident}",phone.eq."${cleanIdent}"`)
-        .eq('password', pass)
-        .limit(1);
+        .eq('password', pass);
 
       if (!error && data && data.length > 0) {
-        const user = data[0];
-        saveSession({ ...user, role: 'customer' });
-        authModalOverlay.classList.remove('open');
-        loginForm.reset();
-        showToast(`Bem-vindo(a) de volta, ${user.name.split(' ')[0]}!`);
-        return;
+        const found = data.find(u => {
+          const uCpfDigits = (u.cpf || '').replace(/\D/g, '');
+          const uPhoneDigits = (u.phone || '').replace(/\D/g, '');
+          return u.cpf === ident || u.phone === ident || (digitsOnly && (uCpfDigits === digitsOnly || uPhoneDigits === digitsOnly));
+        });
+
+        if (found) {
+          saveSession({ ...found, role: 'customer' });
+          authModalOverlay.classList.remove('open');
+          loginForm.reset();
+          showToast(`Bem-vindo(a) de volta, ${found.name.split(' ')[0]}!`);
+          return;
+        }
       }
     } catch (err) {
       console.warn('Erro ao consultar login no Supabase:', err);
     }
   }
 
-  // C. Verificação Local
+  // C. Verificação Local (Fallback)
   const savedUsers = JSON.parse(localStorage.getItem('ru_cuccina_users') || '[]');
-  const localUser = savedUsers.find(u => 
-    (u.cpf === ident || u.phone === ident || u.cpf.replace(/\D/g, '') === ident.replace(/\D/g, '')) && u.password === pass
-  );
+  const localUser = savedUsers.find(u => {
+    const uCpfDigits = (u.cpf || '').replace(/\D/g, '');
+    const uPhoneDigits = (u.phone || '').replace(/\D/g, '');
+    return ((u.cpf === ident || u.phone === ident || (digitsOnly && (uCpfDigits === digitsOnly || uPhoneDigits === digitsOnly))) && u.password === pass);
+  });
 
   if (localUser) {
     saveSession({ ...localUser, role: 'customer' });
