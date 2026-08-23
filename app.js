@@ -1,6 +1,6 @@
 /**
  * RU CUCCINA - Sistema Completo de Delivery, Autenticação e Gestão de Pedidos
- * Integrado com Supabase (PostgreSQL & Realtime) + Fallback LocalStorage
+ * 100% Integrado com Supabase (PostgreSQL & Realtime) + Auto-refresh Contínuo
  */
 
 // Cardápio de Produtos
@@ -55,62 +55,7 @@ const PRODUCTS = [
   }
 ];
 
-// Dados Iniciais de Demonstração (Fallback)
-const INITIAL_DEMO_ORDERS = [
-  {
-    id: '1001',
-    created_at: new Date(Date.now() - 15 * 60000).toISOString(),
-    timeFormatted: 'Há 15 min',
-    customer: {
-      name: 'Camila Ferreira',
-      cpf: '123.456.789-00',
-      phone: '(11) 98765-4321',
-      street: 'Rua das Palmeiras, 142',
-      neighborhood: 'Jardins',
-      complement: 'Apto 51'
-    },
-    payment: {
-      method: 'PIX',
-      change: ''
-    },
-    notes: 'Caprichar no queijo parmesão ralado por favor.',
-    items: [
-      { id: 'fettuccine-alfredo', title: 'FETTUCCINE ALFREDO', price: 26.90, qty: 2 }
-    ],
-    total: 53.80,
-    isPaid: true,
-    isDispatched: false,
-    isCompleted: false
-  },
-  {
-    id: '1002',
-    created_at: new Date(Date.now() - 35 * 60000).toISOString(),
-    timeFormatted: 'Há 35 min',
-    customer: {
-      name: 'Rodrigo Santos',
-      cpf: '987.654.321-11',
-      phone: '(11) 99123-4567',
-      street: 'Av. Paulista, 1578',
-      neighborhood: 'Bela Vista',
-      complement: 'Bloco B'
-    },
-    payment: {
-      method: 'Cartão de Crédito',
-      change: ''
-    },
-    notes: '',
-    items: [
-      { id: 'risoto-de-parmesao', title: 'RISOTO DE PARMESÃO', price: 27.90, qty: 1 },
-      { id: 'penne-com-frango', title: 'PENNE COM FRANGO', price: 25.90, qty: 1 }
-    ],
-    total: 53.80,
-    isPaid: true,
-    isDispatched: true, // 🔴 Em VERMELHO pois já saiu para entrega!
-    isCompleted: false
-  }
-];
-
-// Estado da Aplicação
+// Estado Global
 let currentCategory = 'all';
 let searchQuery = '';
 let cart = [];
@@ -119,7 +64,7 @@ let registeredUsers = [];
 let currentUser = null;
 let currentAdminFilter = 'all';
 let lastCreatedOrder = null;
-let realtimeSubscription = null;
+let autoRefreshInterval = null;
 
 // Elementos DOM - Telas
 const clientStoreView = document.getElementById('clientStoreView');
@@ -177,16 +122,9 @@ const metricPendingOrders = document.getElementById('metricPendingOrders');
 const metricPaidOrders = document.getElementById('metricPaidOrders');
 const metricDispatchedOrders = document.getElementById('metricDispatchedOrders');
 
-// Elementos DOM - Configuração do Banco
-const adminOpenDbConfigBtn = document.getElementById('adminOpenDbConfigBtn');
-const dbConfigModalOverlay = document.getElementById('dbConfigModalOverlay');
-const dbConfigCloseBtn = document.getElementById('dbConfigCloseBtn');
-const dbConfigForm = document.getElementById('dbConfigForm');
-const dbClearBtn = document.getElementById('dbClearBtn');
+// Status Banco
 const dbStatusDot = document.getElementById('dbStatusDot');
 const dbStatusText = document.getElementById('dbStatusText');
-const dbProjectUrlInput = document.getElementById('dbProjectUrl');
-const dbAnonKeyInput = document.getElementById('dbAnonKey');
 
 // Toast
 const toastNotification = document.getElementById('toastNotification');
@@ -226,7 +164,7 @@ function maskPhone(value) {
 });
 
 /* ==========================================================================
-   SERVIÇO DE BANCO DE DADOS (Supabase + LocalStorage Fallback)
+   INICIALIZAÇÃO & CONEXÃO AUTOMÁTICA COM BANCO DE DADOS
    ========================================================================== */
 function isSupabaseConnected() {
   return supabaseClient !== null;
@@ -235,14 +173,13 @@ function isSupabaseConnected() {
 function updateDbStatusUI() {
   if (isSupabaseConnected()) {
     if (dbStatusDot) dbStatusDot.classList.add('connected');
-    if (dbStatusText) dbStatusText.textContent = 'Nuvem Conectada';
+    if (dbStatusText) dbStatusText.textContent = '🟢 Ao Vivo';
   } else {
     if (dbStatusDot) dbStatusDot.classList.remove('connected');
-    if (dbStatusText) dbStatusText.textContent = 'Banco Local';
+    if (dbStatusText) dbStatusText.textContent = '🟡 Local';
   }
 }
 
-// Inicializar Dados & Sincronização
 async function initDatabaseAndLoadData() {
   initSupabase();
   updateDbStatusUI();
@@ -258,23 +195,24 @@ async function initDatabaseAndLoadData() {
     }
   }
 
-  // 2. Carregar Usuários Locais (Cache)
-  const savedUsers = localStorage.getItem('ru_cuccina_users');
-  if (savedUsers) {
-    try { registeredUsers = JSON.parse(savedUsers); } catch (e) { registeredUsers = []; }
-  }
-
-  // 3. Carregar Pedidos
+  // 2. Carregar Pedidos Imediatamente
   await fetchAllOrders();
 
-  // 4. Configurar Realtime se Supabase estiver ativo
+  // 3. Iniciar Assinatura Realtime (WebSockets)
   if (isSupabaseConnected()) {
     setupRealtimeSubscription();
   }
+
+  // 4. Iniciar Polling Automático Contínuo em Segundo Plano (a cada 4 segundos)
+  if (!autoRefreshInterval) {
+    autoRefreshInterval = setInterval(() => {
+      fetchAllOrders(true); // Atualização silenciosa
+    }, 4000);
+  }
 }
 
-// Carregar Pedidos (do Supabase ou Local)
-async function fetchAllOrders() {
+// Buscar Pedidos
+async function fetchAllOrders(silent = false) {
   if (isSupabaseConnected()) {
     try {
       const { data, error } = await supabaseClient
@@ -289,17 +227,14 @@ async function fetchAllOrders() {
         return;
       }
     } catch (e) {
-      console.warn('Falha ao buscar pedidos do Supabase, usando local:', e);
+      if (!silent) console.warn('Falha ao buscar pedidos do Supabase:', e);
     }
   }
 
   // Fallback Local
   const saved = localStorage.getItem('ru_cuccina_orders');
   if (saved) {
-    try { orders = JSON.parse(saved); } catch (e) { orders = INITIAL_DEMO_ORDERS; }
-  } else {
-    orders = INITIAL_DEMO_ORDERS;
-    saveLocalOrders();
+    try { orders = JSON.parse(saved); } catch (e) { orders = []; }
   }
   updateAdminMetrics();
   renderAdminOrders();
@@ -335,11 +270,6 @@ function normalizeDbOrder(dbRow) {
   };
 }
 
-function saveLocalOrders() {
-  localStorage.setItem('ru_cuccina_orders', JSON.stringify(orders));
-}
-
-// Assinatura em Tempo Real (Realtime Supabase)
 function setupRealtimeSubscription() {
   if (!supabaseClient) return;
 
@@ -347,9 +277,7 @@ function setupRealtimeSubscription() {
     supabaseClient
       .channel('public:orders')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, (payload) => {
-        console.log('🔄 Atualização de pedido em tempo real:', payload);
-        fetchAllOrders();
-        showToast('Atualização de pedidos recebida em tempo real!');
+        fetchAllOrders(true);
       })
       .subscribe();
   } catch (e) {
@@ -357,47 +285,9 @@ function setupRealtimeSubscription() {
   }
 }
 
-// Configuração do Banco de Dados via Modal
-adminOpenDbConfigBtn.addEventListener('click', () => {
-  dbProjectUrlInput.value = SUPABASE_CONFIG.url || '';
-  dbAnonKeyInput.value = SUPABASE_CONFIG.anonKey || '';
-  dbConfigModalOverlay.classList.add('open');
-});
-
-dbConfigCloseBtn.addEventListener('click', () => {
-  dbConfigModalOverlay.classList.remove('open');
-});
-
-dbConfigForm.addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const url = dbProjectUrlInput.value.trim();
-  const key = dbAnonKeyInput.value.trim();
-
-  updateSupabaseCredentials(url, key);
-  updateDbStatusUI();
-
-  if (isSupabaseConnected()) {
-    showToast('Conectando ao Supabase...');
-    await fetchAllOrders();
-    setupRealtimeSubscription();
-    dbConfigModalOverlay.classList.remove('open');
-    showToast('Banco Supabase Conectado com Sucesso!');
-  } else {
-    alert('Não foi possível inicializar o cliente Supabase. Verifique a URL e a Anon Key informadas.');
-  }
-});
-
-dbClearBtn.addEventListener('click', () => {
-  updateSupabaseCredentials('', '');
-  updateDbStatusUI();
-  dbProjectUrlInput.value = '';
-  dbAnonKeyInput.value = '';
-  showToast('Configurações do banco limpas. Usando armazenamento local.');
-});
-
 /* ==========================================================================
-   AUTENTICAÇÃO & VERIFICAÇÃO DE USUÁRIOS NO BANCO
-   ========================================================================= */
+   AUTENTICAÇÃO: LOGIN & CADASTRO
+   ========================================================================== */
 function updateAuthUI() {
   if (currentUser) {
     if (currentUser.role === 'admin') {
@@ -479,7 +369,7 @@ loginForm.addEventListener('submit', async (e) => {
     return;
   }
 
-  // B. Verificação no Supabase (se conectado)
+  // B. Verificação no Supabase
   if (isSupabaseConnected()) {
     try {
       const cleanIdent = ident.replace(/\D/g, '');
@@ -495,7 +385,7 @@ loginForm.addEventListener('submit', async (e) => {
         saveSession({ ...user, role: 'customer' });
         authModalOverlay.classList.remove('open');
         loginForm.reset();
-        showToast(`Bem-vindo(a) de volta, ${user.name.split(' ')[0]}! (Nuvem)`);
+        showToast(`Bem-vindo(a) de volta, ${user.name.split(' ')[0]}!`);
         return;
       }
     } catch (err) {
@@ -503,8 +393,9 @@ loginForm.addEventListener('submit', async (e) => {
     }
   }
 
-  // C. Verificação no Banco Local
-  const localUser = registeredUsers.find(u => 
+  // C. Verificação Local
+  const savedUsers = JSON.parse(localStorage.getItem('ru_cuccina_users') || '[]');
+  const localUser = savedUsers.find(u => 
     (u.cpf === ident || u.phone === ident || u.cpf.replace(/\D/g, '') === ident.replace(/\D/g, '')) && u.password === pass
   );
 
@@ -514,11 +405,11 @@ loginForm.addEventListener('submit', async (e) => {
     loginForm.reset();
     showToast(`Bem-vindo(a) de volta, ${localUser.name.split(' ')[0]}!`);
   } else {
-    alert('Credenciais não encontradas no banco de dados.\n\n• Para Administrador: use admin / admin123\n• Para Cliente: cadastre-se na aba "Criar Conta".');
+    alert('Usuário ou senha incorretos.\n\n• Para Gerência: use admin / admin123\n• Para Cliente: cadastre-se na aba "Criar Conta".');
   }
 });
 
-// 2. Cadastro com Salvamento no Banco e Verificação de Duplicidade
+// 2. Cadastro com Salvamento no Banco
 registerForm.addEventListener('submit', async (e) => {
   e.preventDefault();
   const name = document.getElementById('regName').value.trim();
@@ -529,7 +420,7 @@ registerForm.addEventListener('submit', async (e) => {
   const complement = document.getElementById('regComplement').value.trim();
   const password = document.getElementById('regPassword').value.trim();
 
-  // A. Verificar no Supabase se CPF já existe
+  // A. Checar duplicidade no Supabase
   if (isSupabaseConnected()) {
     try {
       const { data } = await supabaseClient
@@ -542,14 +433,8 @@ registerForm.addEventListener('submit', async (e) => {
         return;
       }
     } catch (err) {
-      console.warn('Erro ao checar duplicidade no Supabase:', err);
+      console.warn('Erro ao checar duplicidade:', err);
     }
-  }
-
-  // B. Verificar no Banco Local
-  if (registeredUsers.some(u => u.cpf === cpf)) {
-    alert('Este CPF já está cadastrado. Faça login na aba "Entrar".');
-    return;
   }
 
   const newUser = {
@@ -563,26 +448,20 @@ registerForm.addEventListener('submit', async (e) => {
     role: 'customer'
   };
 
-  // C. Salvar no Supabase
+  // B. Salvar no Supabase
   if (isSupabaseConnected()) {
     try {
-      const { error } = await supabaseClient
-        .from('users')
-        .insert([newUser]);
-
-      if (error) {
-        console.error('Erro ao salvar no Supabase:', error);
-      } else {
-        console.log('✅ Usuário registrado no Supabase!');
-      }
+      await supabaseClient.from('users').insert([newUser]);
+      console.log('✅ Usuário registrado no Supabase!');
     } catch (err) {
-      console.warn('Falha na inserção remota:', err);
+      console.warn('Falha na inserção no banco:', err);
     }
   }
 
-  // D. Salvar Localmente
-  registeredUsers.push(newUser);
-  localStorage.setItem('ru_cuccina_users', JSON.stringify(registeredUsers));
+  // C. Salvar Local
+  const savedUsers = JSON.parse(localStorage.getItem('ru_cuccina_users') || '[]');
+  savedUsers.push(newUser);
+  localStorage.setItem('ru_cuccina_users', JSON.stringify(savedUsers));
   saveSession(newUser);
 
   authModalOverlay.classList.remove('open');
@@ -596,9 +475,7 @@ registerForm.addEventListener('submit', async (e) => {
 function openAdminDashboard() {
   clientStoreView.style.display = 'none';
   adminDashboardView.style.display = 'flex';
-  renderAdminOrders();
-  updateAdminMetrics();
-  updateDbStatusUI();
+  fetchAllOrders();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }
 
@@ -617,7 +494,7 @@ adminLogoutBtn.addEventListener('click', () => {
 });
 
 adminRefreshBtn.addEventListener('click', async () => {
-  showToast('Atualizando lista de pedidos...');
+  showToast('Atualizando pedidos...');
   await fetchAllOrders();
   showToast('Pedidos sincronizados!');
 });
@@ -757,9 +634,7 @@ async function updateOrderInDatabase(orderId, updates) {
       console.warn('Erro ao atualizar no Supabase:', e);
     }
   }
-  saveLocalOrders();
-  updateAdminMetrics();
-  renderAdminOrders();
+  fetchAllOrders(true);
 }
 
 function togglePaidStatus(orderId) {
@@ -798,7 +673,6 @@ async function deleteOrder(orderId) {
       }
     }
     orders = orders.filter(o => o.id !== orderId);
-    saveLocalOrders();
     updateAdminMetrics();
     renderAdminOrders();
     showToast(`Pedido #${orderId} excluído.`);
@@ -1016,63 +890,46 @@ deliveryForm.addEventListener('submit', async (e) => {
 
   const newOrderObj = {
     id: newId,
-    created_at: new Date().toISOString(),
-    timeFormatted: new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }),
-    customer: {
-      name,
-      cpf,
-      phone,
-      street,
-      neighborhood,
-      complement
-    },
-    payment: {
-      method: paymentMethod,
-      change
-    },
-    notes,
-    items: [...cart],
+    customer_name: name,
+    customer_cpf: cpf,
+    customer_phone: phone,
+    customer_address: fullAddress,
+    payment_method: paymentMethod,
+    payment_change: change,
+    notes: notes,
+    items: cart,
     total: subtotal,
-    isPaid: false,
-    isDispatched: false,
-    isCompleted: false
+    is_paid: false,
+    is_dispatched: false,
+    is_completed: false
   };
 
   // Salvar no Supabase
   if (isSupabaseConnected()) {
     try {
-      await supabaseClient.from('orders').insert([{
-        id: newId,
-        customer_name: name,
-        customer_cpf: cpf,
-        customer_phone: phone,
-        customer_address: fullAddress,
-        payment_method: paymentMethod,
-        payment_change: change,
-        notes: notes,
-        items: cart,
-        total: subtotal,
-        is_paid: false,
-        is_dispatched: false,
-        is_completed: false
-      }]);
+      await supabaseClient.from('orders').insert([newOrderObj]);
       console.log('✅ Pedido salvo no Supabase!');
     } catch (err) {
       console.warn('Falha ao inserir pedido no Supabase:', err);
     }
   }
 
-  // Salvar Local
-  orders.unshift(newOrderObj);
-  saveLocalOrders();
-  lastCreatedOrder = newOrderObj;
+  fetchAllOrders(true);
 
   deliveryForm.reset();
   cart = [];
   updateCartUI();
 
   checkoutModalOverlay.classList.remove('open');
-  showSuccessModal(newOrderObj);
+  showSuccessModal({
+    id: newId,
+    timeFormatted: 'Agora',
+    customer: { name, cpf, phone, street, neighborhood, complement },
+    payment: { method: paymentMethod, change },
+    notes,
+    items: newOrderObj.items,
+    total: subtotal
+  });
 });
 
 function showSuccessModal(order) {
