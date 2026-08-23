@@ -312,6 +312,8 @@
 
         <!-- Tab 1: Form de Login (Admin e Clientes) -->
         <form id="loginForm" class="auth-form">
+          <div class="auth-error-box" id="loginErrorBox" style="display: none;"></div>
+
           <div class="form-group">
             <label for="loginIdentifier">CPF, Telefone ou Usuário *</label>
             <input type="text" id="loginIdentifier" placeholder="Seu CPF, WhatsApp ou admin" required autocomplete="username" autocapitalize="none" autocorrect="off" spellcheck="false">
@@ -333,6 +335,8 @@
 
         <!-- Tab 2: Form de Cadastro de Cliente (com CPF, Nome, Endereço e Contato) -->
         <form id="registerForm" class="auth-form" style="display: none;">
+          <div class="auth-error-box" id="regErrorBox" style="display: none;"></div>
+
           <div class="form-group">
             <label for="regName">Nome Completo *</label>
             <input type="text" id="regName" placeholder="Ex: Maria da Silva" required>
@@ -524,6 +528,18 @@
             </button>
           </div>
         </form>
+      </div>
+    </div>
+
+    <!-- ==========================================================================
+         MODAL DE ALERTA / MENSAGEM CUSTOMIZADA (Substitui alerts do navegador)
+         ========================================================================== -->
+    <div class="modal-overlay" id="customDialogOverlay">
+      <div class="custom-dialog-card">
+        <div class="dialog-icon-circle" id="dialogIcon">⚠️</div>
+        <h3 class="dialog-title" id="dialogTitle">Aviso</h3>
+        <p class="dialog-message" id="dialogMessage">Mensagem de aviso aqui.</p>
+        <button class="dialog-ok-btn" id="dialogOkBtn">OK, Entendi</button>
       </div>
     </div>
 

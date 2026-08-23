@@ -1312,6 +1312,96 @@ html, body {
   cursor: pointer;
 }
 
+/* Auth Error Message Box */
+.auth-error-box {
+  background-color: #fee2e2;
+  border: 1.5px solid #f87171;
+  color: #991b1b;
+  border-radius: 12px;
+  padding: 10px 14px;
+  font-size: 12.5px;
+  line-height: 1.35;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  animation: shake 0.35s ease;
+}
+
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-5px); }
+  75% { transform: translateX(5px); }
+}
+
+/* Custom Dialog Card */
+.custom-dialog-card {
+  background-color: var(--color-bg-main);
+  width: 100%;
+  max-width: 380px;
+  border-radius: 24px;
+  padding: 24px 20px;
+  text-align: center;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.45);
+  animation: modalPop 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+.dialog-icon-circle {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background-color: #fee2e2;
+  color: #dc2626;
+  font-size: 26px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto 12px auto;
+}
+
+.dialog-icon-circle.success {
+  background-color: #dcfce7;
+  color: #15803d;
+}
+
+.dialog-icon-circle.info {
+  background-color: #e0f2fe;
+  color: #0369a1;
+}
+
+.dialog-title {
+  font-family: var(--font-serif);
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--color-primary-dark);
+  margin-bottom: 8px;
+}
+
+.dialog-message {
+  font-size: 13.5px;
+  color: var(--color-text-muted);
+  line-height: 1.45;
+  margin-bottom: 18px;
+}
+
+.dialog-ok-btn {
+  background-color: var(--color-primary-dark);
+  color: #ffffff;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 50px;
+  font-size: 13.5px;
+  font-weight: 700;
+  cursor: pointer;
+  width: 100%;
+  transition: var(--transition-smooth);
+}
+
+.dialog-ok-btn:hover {
+  background-color: var(--color-primary-light);
+}
+
 /* Auth Tabs */
 .auth-tabs {
   display: flex;

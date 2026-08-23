@@ -288,6 +288,61 @@ function setupRealtimeSubscription() {
 /* ==========================================================================
    AUTENTICAÇÃO: LOGIN & CADASTRO
    ========================================================================== */
+/* ==========================================================================
+   ALERTA CUSTOMIZADO & NOTIFICAÇÕES (Substitui alerts nativos do navegador)
+   ========================================================================== */
+const customDialogOverlay = document.getElementById('customDialogOverlay');
+const dialogTitle = document.getElementById('dialogTitle');
+const dialogMessage = document.getElementById('dialogMessage');
+const dialogIcon = document.getElementById('dialogIcon');
+const dialogOkBtn = document.getElementById('dialogOkBtn');
+
+function showAppAlert(title, message, type = 'error') {
+  if (!customDialogOverlay) {
+    console.warn(title, message);
+    return;
+  }
+  dialogTitle.textContent = title;
+  dialogMessage.textContent = message;
+
+  if (type === 'success') {
+    dialogIcon.className = 'dialog-icon-circle success';
+    dialogIcon.textContent = '✓';
+  } else if (type === 'info') {
+    dialogIcon.className = 'dialog-icon-circle info';
+    dialogIcon.textContent = 'ℹ️';
+  } else {
+    dialogIcon.className = 'dialog-icon-circle';
+    dialogIcon.textContent = '⚠️';
+  }
+
+  customDialogOverlay.classList.add('open');
+}
+
+if (dialogOkBtn) {
+  dialogOkBtn.addEventListener('click', () => {
+    customDialogOverlay.classList.remove('open');
+  });
+}
+
+function showAuthError(boxId, msg) {
+  const box = document.getElementById(boxId);
+  if (box) {
+    box.textContent = msg;
+    box.style.display = 'flex';
+  }
+}
+
+function clearAuthErrors() {
+  const lBox = document.getElementById('loginErrorBox');
+  const rBox = document.getElementById('regErrorBox');
+  if (lBox) lBox.style.display = 'none';
+  if (rBox) rBox.style.display = 'none';
+}
+
+/* ==========================================================================
+   AUTENTICAÇÃO: LOGIN & CADASTRO
+   ========================================================================== */
 function updateAuthUI() {
   if (currentUser) {
     if (currentUser.role === 'admin') {
@@ -302,19 +357,18 @@ function updateAuthUI() {
 }
 
 authModalOpenBtn.addEventListener('click', () => {
+  clearAuthErrors();
   if (currentUser && currentUser.role === 'admin') {
     openAdminDashboard();
   } else if (currentUser) {
-    if (confirm(`Conectado como: ${currentUser.name}\n\nDeseja sair da sua conta?`)) {
-      saveSession(null);
-      showToast('Você saiu da sua conta.');
-    }
+    showAppAlert('Conta Conectada', `Você está conectado como: ${currentUser.name}\n\nPara sair, acesse o painel ou use o botão de logout.`, 'info');
   } else {
     authModalOverlay.classList.add('open');
   }
 });
 
 adminFooterLoginBtn.addEventListener('click', () => {
+  clearAuthErrors();
   if (currentUser && currentUser.role === 'admin') {
     openAdminDashboard();
   } else {
@@ -327,9 +381,11 @@ adminFooterLoginBtn.addEventListener('click', () => {
 
 authCloseBtn.addEventListener('click', () => {
   authModalOverlay.classList.remove('open');
+  clearAuthErrors();
 });
 
 authTabLogin.addEventListener('click', () => {
+  clearAuthErrors();
   authTabLogin.classList.add('active');
   authTabRegister.classList.remove('active');
   loginForm.style.display = 'flex';
@@ -337,6 +393,7 @@ authTabLogin.addEventListener('click', () => {
 });
 
 authTabRegister.addEventListener('click', () => {
+  clearAuthErrors();
   authTabRegister.classList.add('active');
   authTabLogin.classList.remove('active');
   registerForm.style.display = 'flex';
@@ -357,6 +414,7 @@ function saveSession(user) {
 const quickAdminFillBtn = document.getElementById('quickAdminFillBtn');
 if (quickAdminFillBtn) {
   quickAdminFillBtn.addEventListener('click', () => {
+    clearAuthErrors();
     document.getElementById('loginIdentifier').value = 'admin';
     document.getElementById('loginPassword').value = 'admin123';
   });
@@ -365,72 +423,107 @@ if (quickAdminFillBtn) {
 // 1. Login com Verificação no Banco / Admin
 loginForm.addEventListener('submit', async (e) => {
   e.preventDefault();
+  clearAuthErrors();
   const ident = (document.getElementById('loginIdentifier').value || '').trim();
   const pass = (document.getElementById('loginPassword').value || '').trim();
   const lowerIdent = ident.toLowerCase();
   const digitsOnly = ident.replace(/\D/g, '');
 
-  // A. Verificação de Acesso Admin Mestre (Tolerante a maiúsculas/espaços)
-  if (lowerIdent === 'admin' || lowerIdent === 'admin@rucuccina.com' || lowerIdent === 'gerencia') {
-    if (pass === 'admin123' || pass === 'admin') {
-      saveSession({ role: 'admin', name: 'Administrador' });
-      authModalOverlay.classList.remove('open');
-      loginForm.reset();
-      showToast('Acesso concedido ao Painel de Gestão!');
-      openAdminDashboard();
-      return;
-    }
+  const submitBtn = document.getElementById('loginSubmitBtn');
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.querySelector('span').textContent = 'Verificando...';
   }
 
-  // B. Verificação no Banco Supabase
-  if (isSupabaseConnected()) {
-    try {
-      const { data, error } = await supabaseClient
-        .from('users')
-        .select('*')
-        .eq('password', pass);
+  try {
+    // A. Verificação de Acesso Admin Mestre (Tolerante a maiúsculas/espaços)
+    if (lowerIdent === 'admin' || lowerIdent === 'admin@rucuccina.com' || lowerIdent === 'gerencia') {
+      if (pass === 'admin123' || pass === 'admin') {
+        saveSession({ role: 'admin', name: 'Administrador' });
+        authModalOverlay.classList.remove('open');
+        loginForm.reset();
+        showToast('Acesso concedido ao Painel de Gestão!');
+        openAdminDashboard();
+        return;
+      } else {
+        showAuthError('loginErrorBox', 'Senha incorreta para a Gerência. Utilize admin123');
+        return;
+      }
+    }
 
+    // B. Verificação no Banco Supabase (Busca inteligente por CPF, Telefone ou Nome)
+    if (isSupabaseConnected()) {
+      const { data, error } = await supabaseClient.from('users').select('*');
       if (!error && data && data.length > 0) {
         const found = data.find(u => {
           const uCpfDigits = (u.cpf || '').replace(/\D/g, '');
           const uPhoneDigits = (u.phone || '').replace(/\D/g, '');
-          return u.cpf === ident || u.phone === ident || (digitsOnly && (uCpfDigits === digitsOnly || uPhoneDigits === digitsOnly));
+          const uNameLower = (u.name || '').toLowerCase();
+          return (
+            (digitsOnly && (uCpfDigits === digitsOnly || uPhoneDigits === digitsOnly)) ||
+            (u.cpf && u.cpf.trim() === ident) ||
+            (u.phone && u.phone.trim() === ident) ||
+            (uNameLower.includes(lowerIdent) && lowerIdent.length >= 3)
+          );
         });
 
         if (found) {
-          saveSession({ ...found, role: 'customer' });
-          authModalOverlay.classList.remove('open');
-          loginForm.reset();
-          showToast(`Bem-vindo(a) de volta, ${found.name.split(' ')[0]}!`);
-          return;
+          if (found.password === pass) {
+            saveSession({ ...found, role: 'customer' });
+            authModalOverlay.classList.remove('open');
+            loginForm.reset();
+            showToast(`Bem-vindo(a) de volta, ${found.name.split(' ')[0]}!`);
+            return;
+          } else {
+            showAuthError('loginErrorBox', 'A senha digitada está incorreta para este cadastro.');
+            return;
+          }
         }
       }
-    } catch (err) {
-      console.warn('Erro ao consultar login no Supabase:', err);
     }
-  }
 
-  // C. Verificação Local (Fallback)
-  const savedUsers = JSON.parse(localStorage.getItem('ru_cuccina_users') || '[]');
-  const localUser = savedUsers.find(u => {
-    const uCpfDigits = (u.cpf || '').replace(/\D/g, '');
-    const uPhoneDigits = (u.phone || '').replace(/\D/g, '');
-    return ((u.cpf === ident || u.phone === ident || (digitsOnly && (uCpfDigits === digitsOnly || uPhoneDigits === digitsOnly))) && u.password === pass);
-  });
+    // C. Verificação Local (Fallback)
+    const savedUsers = JSON.parse(localStorage.getItem('ru_cuccina_users') || '[]');
+    const localUser = savedUsers.find(u => {
+      const uCpfDigits = (u.cpf || '').replace(/\D/g, '');
+      const uPhoneDigits = (u.phone || '').replace(/\D/g, '');
+      return (
+        (digitsOnly && (uCpfDigits === digitsOnly || uPhoneDigits === digitsOnly)) ||
+        u.cpf === ident || u.phone === ident
+      );
+    });
 
-  if (localUser) {
-    saveSession({ ...localUser, role: 'customer' });
-    authModalOverlay.classList.remove('open');
-    loginForm.reset();
-    showToast(`Bem-vindo(a) de volta, ${localUser.name.split(' ')[0]}!`);
-  } else {
-    alert('Usuário ou senha incorretos.\n\n• Para Gerência: use admin / admin123\n• Para Cliente: cadastre-se na aba "Criar Conta".');
+    if (localUser) {
+      if (localUser.password === pass) {
+        saveSession({ ...localUser, role: 'customer' });
+        authModalOverlay.classList.remove('open');
+        loginForm.reset();
+        showToast(`Bem-vindo(a) de volta, ${localUser.name.split(' ')[0]}!`);
+        return;
+      } else {
+        showAuthError('loginErrorBox', 'A senha digitada está incorreta.');
+        return;
+      }
+    }
+
+    // Se nenhuma conta foi encontrada
+    showAuthError('loginErrorBox', 'Nenhuma conta encontrada com este CPF ou Telefone. Cadastre-se na aba "Criar Conta".');
+
+  } catch (err) {
+    console.warn('Erro ao autenticar:', err);
+    showAuthError('loginErrorBox', 'Erro de conexão com o banco. Verifique sua rede.');
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.querySelector('span').textContent = 'Entrar na Conta';
+    }
   }
 });
 
 // 2. Cadastro com Salvamento no Banco
 registerForm.addEventListener('submit', async (e) => {
   e.preventDefault();
+  clearAuthErrors();
   const name = document.getElementById('regName').value.trim();
   const cpf = document.getElementById('regCpf').value.trim();
   const phone = document.getElementById('regPhone').value.trim();
@@ -438,54 +531,64 @@ registerForm.addEventListener('submit', async (e) => {
   const neighborhood = document.getElementById('regNeighborhood').value.trim();
   const complement = document.getElementById('regComplement').value.trim();
   const password = document.getElementById('regPassword').value.trim();
+  const cpfDigits = cpf.replace(/\D/g, '');
 
-  // A. Checar duplicidade no Supabase
-  if (isSupabaseConnected()) {
-    try {
-      const { data } = await supabaseClient
-        .from('users')
-        .select('id')
-        .eq('cpf', cpf);
+  const submitBtn = registerForm.querySelector('button[type="submit"]');
+  if (submitBtn) {
+    submitBtn.disabled = true;
+    submitBtn.querySelector('span').textContent = 'Cadastrando...';
+  }
 
-      if (data && data.length > 0) {
-        alert('Este CPF já está cadastrado no banco de dados. Faça login na aba "Entrar".');
+  try {
+    // A. Checar duplicidade no Supabase
+    if (isSupabaseConnected()) {
+      const { data } = await supabaseClient.from('users').select('cpf');
+      if (data && data.some(u => (u.cpf || '').replace(/\D/g, '') === cpfDigits)) {
+        showAuthError('regErrorBox', 'Este CPF já está cadastrado no sistema. Acesse a aba "Entrar".');
         return;
       }
-    } catch (err) {
-      console.warn('Erro ao checar duplicidade:', err);
+    }
+
+    const newUser = {
+      cpf,
+      name,
+      phone,
+      street,
+      neighborhood,
+      complement,
+      password,
+      role: 'customer'
+    };
+
+    // B. Salvar no Supabase
+    if (isSupabaseConnected()) {
+      const { error } = await supabaseClient.from('users').insert([newUser]);
+      if (error) {
+        console.warn('Erro no insert do Supabase:', error);
+      } else {
+        console.log('✅ Usuário registrado no Supabase!');
+      }
+    }
+
+    // C. Salvar Local
+    const savedUsers = JSON.parse(localStorage.getItem('ru_cuccina_users') || '[]');
+    savedUsers.push(newUser);
+    localStorage.setItem('ru_cuccina_users', JSON.stringify(savedUsers));
+    saveSession(newUser);
+
+    authModalOverlay.classList.remove('open');
+    registerForm.reset();
+    showToast(`Cadastro salvo com sucesso! Olá, ${name.split(' ')[0]}.`);
+
+  } catch (err) {
+    console.error('Erro no cadastro:', err);
+    showAuthError('regErrorBox', 'Ocorreu um erro ao salvar o cadastro. Tente novamente.');
+  } finally {
+    if (submitBtn) {
+      submitBtn.disabled = false;
+      submitBtn.querySelector('span').textContent = 'Concluir Cadastro';
     }
   }
-
-  const newUser = {
-    cpf,
-    name,
-    phone,
-    street,
-    neighborhood,
-    complement,
-    password,
-    role: 'customer'
-  };
-
-  // B. Salvar no Supabase
-  if (isSupabaseConnected()) {
-    try {
-      await supabaseClient.from('users').insert([newUser]);
-      console.log('✅ Usuário registrado no Supabase!');
-    } catch (err) {
-      console.warn('Falha na inserção no banco:', err);
-    }
-  }
-
-  // C. Salvar Local
-  const savedUsers = JSON.parse(localStorage.getItem('ru_cuccina_users') || '[]');
-  savedUsers.push(newUser);
-  localStorage.setItem('ru_cuccina_users', JSON.stringify(savedUsers));
-  saveSession(newUser);
-
-  authModalOverlay.classList.remove('open');
-  registerForm.reset();
-  showToast(`Cadastro salvo com sucesso! Olá, ${name.split(' ')[0]}.`);
 });
 
 /* ==========================================================================
